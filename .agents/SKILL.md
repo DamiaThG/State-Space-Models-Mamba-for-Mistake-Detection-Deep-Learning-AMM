@@ -226,8 +226,8 @@ NOMEREPO/
 - [x] Comprensione infrastruttura: Apptainer, SLURM, QoS, nodi GPU
 - [x] Struttura repo GitHub creata e pushata dal Mac
 - [x] Workflow git via rsync Mac↔cluster stabilito
-- [ ] Verifica ambiente Apptainer su gnode10 (sanity check PyTorch + GPU)
-- [ ] Installazione mamba-ssm e xlstm via pip install --user nel container
+- [x] Verifica ambiente Apptainer su gnode10 (sanity check PyTorch + GPU)
+- [x] Installazione mamba-ssm e xlstm via pip install --user nel container
 - [ ] Download feature TSM da HuggingFace sul cluster
 
 ### FASE 2 — Dataloader e baseline TempAgg (Giorni 4–8)
