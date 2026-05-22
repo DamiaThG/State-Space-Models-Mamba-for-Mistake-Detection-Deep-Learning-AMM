@@ -1,0 +1,27 @@
+# Dati e feature — troppo grandi per git
+data/TSM_features/**
+data/annotations/**
+!data/TSM_features/.gitkeep
+!data/annotations/.gitkeep
+
+# Checkpoint e modelli salvati
+models/**/*.pt
+models/**/*.pth
+models/**/*.ckpt
+
+# Log SLURM
+logs/*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Cache
+.cache/
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
