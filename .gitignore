@@ -4,14 +4,6 @@ data/annotations/**
 !data/TSM_features/.gitkeep
 !data/annotations/.gitkeep
 
-# Checkpoint e modelli salvati
-models/**/*.pt
-models/**/*.pth
-models/**/*.ckpt
-
-# Log SLURM
-logs/*.log
-
 # Python
 __pycache__/
 *.py[cod]
