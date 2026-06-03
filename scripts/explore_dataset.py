@@ -1,6 +1,7 @@
 from huggingface_hub import HfFileSystem
 import os
 
+# Usa la variabile d'ambiente HF_TOKEN invece di un token hardcoded
 fs = HfFileSystem(token=os.environ.get("HF_TOKEN"))
 
 print('=== Tutte le voci in TSM_features ===')
