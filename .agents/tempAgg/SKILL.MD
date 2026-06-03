@@ -21,7 +21,7 @@ Scrivi una classe `TempAggMistakeDetector(nn.Module)`. Il forward pass deve risp
 
 * **Riduzione Dimensionale:** Applica un layer Lineare iniziale per proiettare le feature in ingresso da 2048 a una dimensione nascosta (es. `hidden_dim = 512`).
 * **Creazione degli Snippet (Temporal Pooling):** * Implementa una logica per raggruppare i frame temporali in "snippet" tramite un'operazione di max-pooling lungo l'asse temporale.
-  * Genera il tensore **Spanning Past** (su scale temporali multiple raggruppando tutto il video) e il tensore **Recent Past** (focalizzato sugli ultimi istanti). Attenzione a mantenere la causalità: non guardare frame futuri rispetto al time-step corrente $t$.
+  * Genera il tensore **Spanning Past** (su scale temporali multiple raggruppando gli ultimi N frame) e il tensore **Recent Past** (focalizzato sugli ultimi istanti). Attenzione a mantenere la causalità: non guardare frame futuri rispetto al time-step corrente $t$.
 * [cite_start]**Non-Local Blocks (NLB):** Implementa un modulo di attenzione[cite: 158]. [cite_start]Il blocco deve includere layer normalization e dropout[cite: 160].
   * [cite_start]*Self-Attention:* Applica il blocco NLB allo Spanning Past su se stesso[cite: 164].
   * [cite_start]*Cross-Attention:* Usa il Recent Past come "query" per interrogare lo Spanning Past processato[cite: 164].
