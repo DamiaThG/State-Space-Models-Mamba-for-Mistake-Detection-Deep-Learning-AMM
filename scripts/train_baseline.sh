@@ -35,7 +35,7 @@ mkdir -p experiments/logs
 mkdir -p experiments/checkpoints
 
 # ---------- Training ----------
-python src/training/training_loop.py \
+PYTHONPATH=. python src/training/training_loop.py \
     --processed_dir   data/processed \
     --annots_dir      data/annotations/assembly101-mistake-detection/annots \
     --batch_size      16 \
