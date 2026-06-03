@@ -40,7 +40,7 @@ export WANDB_MODE=offline
 PYTHONPATH=. python src/training/training_loop.py \
     --processed_dir   data/processed \
     --annots_dir      data/annotations/assembly101-mistake-detection/annots \
-    --batch_size      16 \
+    --batch_size      8 \
     --num_workers     2 \
     --hidden_dim      512 \
     --dropout         0.1 \
