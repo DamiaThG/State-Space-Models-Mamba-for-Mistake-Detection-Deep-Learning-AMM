@@ -39,7 +39,7 @@ PYTHONPATH=. python src/training/training_loop.py \
     --processed_dir   data/processed \
     --annots_dir      data/annotations/assembly101-mistake-detection/annots \
     --batch_size      16 \
-    --num_workers     8 \
+    --num_workers     2 \
     --hidden_dim      512 \
     --dropout         0.1 \
     --spanning_scales 8 16 24 \
