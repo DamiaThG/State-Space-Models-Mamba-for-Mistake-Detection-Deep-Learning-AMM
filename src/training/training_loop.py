@@ -422,6 +422,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     set_seed(args.seed)
+    torch.set_float32_matmul_precision("high")
 
     device_str = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[INFO] Dispositivo: {device_str}")
