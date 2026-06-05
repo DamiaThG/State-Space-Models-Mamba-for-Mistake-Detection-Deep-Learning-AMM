@@ -38,7 +38,7 @@ from torchmetrics import Precision, Recall
 
 # Importazioni dalla root del progetto (eseguire sempre dalla root)
 from src.models.baseline import TempAggMistakeDetector
-from src.datasets.dataloader import build_dataloader
+from src.datasets.dataloader import build_split_dataloaders
 
 
 # ---------------------------------------------------------------------------
@@ -398,8 +398,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--processed_dir",   default="data/processed")
     p.add_argument("--annots_dir",
                    default="data/annotations/assembly101-mistake-detection/annots")
-    p.add_argument("--val_split",       type=float, default=0.15)
-    p.add_argument("--test_split",      type=float, default=0.10)
+    p.add_argument("--val_split",       type=float, default=0.20)
+    p.add_argument("--test_split",      type=float, default=0.20)
     p.add_argument("--batch_size",      type=int,   default=16)
     p.add_argument("--num_workers",     type=int,   default=4)
     # Architettura
@@ -452,23 +452,16 @@ def main() -> None:
     logging.info(f"Dispositivo: {device_str}")
 
     # ── DataLoader ─────────────────────────────────────────────────────────
-    train_loader = build_dataloader(
+    train_loader, val_loader, test_loader = build_split_dataloaders(
         processed_dir   = args.processed_dir,
         annotations_dir = args.annots_dir,
         batch_size      = args.batch_size,
-        shuffle         = True,
+        val_split       = args.val_split,
+        test_split      = args.test_split,
         num_workers     = args.num_workers,
         pin_memory      = (device_str == "cuda"),
         max_seq_len     = args.max_seq_len,
-    )
-    val_loader = build_dataloader(
-        processed_dir   = args.processed_dir,
-        annotations_dir = args.annots_dir,
-        batch_size      = args.batch_size,
-        shuffle         = False,
-        num_workers     = args.num_workers,
-        pin_memory      = (device_str == "cuda"),
-        max_seq_len     = args.max_seq_len,
+        seed            = args.seed,
     )
 
     # ── LightningModule ────────────────────────────────────────────────────
@@ -530,9 +523,13 @@ def main() -> None:
 
     trainer.fit(lit_model, train_loader, val_loader, ckpt_path=ckpt_path)
 
-    # Stampa metriche finali
+    # ── Valutazione finale sul test set ────────────────────────────────────
     logging.info("Training completato.")
     logging.info(f"Best checkpoint: {ckpt_callback.best_model_path}")
+
+    if test_loader is not None:
+        logging.info("Avvio valutazione sul test set (best checkpoint)...")
+        trainer.test(lit_model, dataloaders=test_loader, ckpt_path="best")
 
     if not args.no_wandb:
         wandb.finish()

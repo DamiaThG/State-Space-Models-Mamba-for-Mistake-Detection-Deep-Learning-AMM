@@ -9,12 +9,13 @@ Il batching gestisce il padding dinamico.
 """
 
 import glob
+import random
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 from torch.nn.utils.rnn import pad_sequence
 
 # ---------------------------------------------------------------------------
@@ -191,3 +192,94 @@ def build_dataloader(
         collate_fn=generic_collate_fn,
         persistent_workers=num_workers > 0,
     )
+
+
+def build_split_dataloaders(
+    processed_dir: str,
+    annotations_dir: str,
+    batch_size: int = 16,
+    val_split: float = 0.20,
+    test_split: float = 0.20,
+    num_workers: int = 4,
+    pin_memory: bool = True,
+    max_seq_len: Optional[int] = None,
+    seed: int = 42,
+) -> Tuple[DataLoader, DataLoader, Optional[DataLoader]]:
+    """
+    Crea train / val / test DataLoader con split a livello di **sequenza**.
+
+    Perché split per sequenza e non per sample?
+    Ogni sample del dataset è definito come [0 : end_frame] di una sequenza.
+    Se si splittasse per sample, frame della stessa sequenza finirebbero sia
+    in train che in val → data leakage e metriche di validazione falsate.
+    Splittando per sequenza si garantisce che l'intero video vada in un solo
+    split.
+
+    Returns:
+        (train_loader, val_loader, test_loader)
+        test_loader è None se test_split == 0.
+    """
+    dataset = MistakeDetectionDataset(
+        processed_dir=processed_dir,
+        annotations_dir=annotations_dir,
+        max_seq_len=max_seq_len,
+    )
+
+    # ── Raggruppa indici per sequenza ────────────────────────────────────────
+    seq_to_indices: dict = {}
+    for idx, sample in enumerate(dataset.samples):
+        seq = sample["sequence_name"]
+        seq_to_indices.setdefault(seq, []).append(idx)
+
+    sequences = list(seq_to_indices.keys())
+    rng = random.Random(seed)
+    rng.shuffle(sequences)
+
+    n       = len(sequences)
+    n_test  = int(n * test_split)
+    n_val   = int(n * val_split)
+    n_train = n - n_val - n_test
+
+    train_seqs = sequences[:n_train]
+    val_seqs   = sequences[n_train : n_train + n_val]
+    test_seqs  = sequences[n_train + n_val :]
+
+    def _indices(seqs):
+        idxs = []
+        for s in seqs:
+            idxs.extend(seq_to_indices[s])
+        return idxs
+
+    train_idx = _indices(train_seqs)
+    val_idx   = _indices(val_seqs)
+    test_idx  = _indices(test_seqs)
+
+    print(
+        f"[INFO] Split sequenze → train: {len(train_seqs)}, "
+        f"val: {len(val_seqs)}, test: {len(test_seqs)}"
+    )
+    print(
+        f"[INFO] Split sample   → train: {len(train_idx)}, "
+        f"val: {len(val_idx)}, test: {len(test_idx)}"
+    )
+
+    # ── Crea i Subset e i DataLoader ─────────────────────────────────────────
+    loader_kwargs = dict(
+        num_workers=num_workers,
+        pin_memory=pin_memory and torch.cuda.is_available(),
+        collate_fn=generic_collate_fn,
+        persistent_workers=num_workers > 0,
+    )
+
+    train_loader = DataLoader(
+        Subset(dataset, train_idx), batch_size=batch_size, shuffle=True,  **loader_kwargs
+    )
+    val_loader = DataLoader(
+        Subset(dataset, val_idx),   batch_size=batch_size, shuffle=False, **loader_kwargs
+    )
+    test_loader = (
+        DataLoader(Subset(dataset, test_idx), batch_size=batch_size, shuffle=False, **loader_kwargs)
+        if test_idx else None
+    )
+
+    return train_loader, val_loader, test_loader
