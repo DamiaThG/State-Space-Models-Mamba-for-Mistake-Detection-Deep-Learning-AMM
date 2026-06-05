@@ -70,25 +70,22 @@ def compute_class_weights(
     """
     Restituisce un tensore di pesi [3] per CrossEntropyLoss.
 
-    Usa sqrt(1/freq) come compromesso tra:
-      - Pesi lineari (1/freq): correction ignorata (F1=0)
-      - Pesi quadratici (1/freq^2): correction appresa ma mistake penalizzato
-
-    Risultati approssimativi:
-        correct    (0): 1.0
-        mistake    (1): ~2.21
-        correction (2): ~3.40
+    Progressione dei run:
+      - Run 1: exp=1.0  → [1.0, 4.87,  11.55] → correction ignorata (F1=0)
+      - Run 2: exp=2.0  → [1.0, 23.7, 133.5]  → correction appresa (F1=0.077) ma overfitting
+      - Run 3: exp=0.5  → [1.0, 2.21,   3.40]  → collasso su 'correct' (recall_correct=0.99)
+      - Run 4: exp=1.5  → [1.0, 7.6,   38.5]   → compromesso ottimale tra run 2 e run 3
     """
     inv = torch.tensor([
         1.0 / correct_frac,
         1.0 / mistake_frac,
         1.0 / correction_frac,
     ])
-    # Radice quadrata: compromesso tra lineare e quadratico
-    weights = inv.sqrt()
+    # Potenza 1.5: tra lineare (1.0) e quadratica (2.0)
+    weights = inv ** 1.5
     # Normalizza rispetto alla classe più frequente
     weights = weights / weights.min()
-    return weights   # [1.0, ~2.21, ~3.40]
+    return weights   # [1.0, ~7.6, ~38.5]
 
 
 # ---------------------------------------------------------------------------
@@ -143,10 +140,11 @@ class TempAggLightningModule(L.LightningModule):
             correct_frac, mistake_frac, correction_frac
         )
         self.criterion = nn.CrossEntropyLoss(
-            weight         = class_weights,
-            ignore_index   = -1,    # ignora il padding
-            reduction      = "mean",
-            label_smoothing= 0.1,   # riduce l'overconfidence (aiuta contro overfitting)
+            weight       = class_weights,
+            ignore_index = -1,    # ignora il padding
+            reduction    = "mean",
+            # NB: label_smoothing RIMOSSO — redistribuisce massa probabilistica
+            # uniformemente, contraddicendo i class weights con classe dominante al 77%.
         )
 
         # ── Metriche (per classe 1=mistake, 2=correction) ──────────────────
