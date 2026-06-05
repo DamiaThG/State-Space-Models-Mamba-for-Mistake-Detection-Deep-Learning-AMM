@@ -46,13 +46,13 @@ PYTHONPATH=. python src/training/training_loop.py \
     --batch_size      4 \
     --num_workers     2 \
     --hidden_dim      512 \
-    --dropout         0.1 \
+    --dropout         0.3 \
     --spanning_scales 8 16 24 \
     --recent_scales   30 90 150 \
     --max_seq_len     500 \
     --epochs          50 \
-    --lr              1e-4 \
-    --weight_decay    1e-5 \
+    --lr              5e-5 \
+    --weight_decay    1e-3 \
     --seed            42 \
     --wandb_project   mistake-detection \
     --wandb_run_name  "tempagg-baseline-$SLURM_JOB_ID" \

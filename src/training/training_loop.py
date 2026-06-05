@@ -68,17 +68,26 @@ def compute_class_weights(
     correction_frac: float = 0.067,
 ) -> torch.Tensor:
     """
-    Restituisce un tensore di pesi [3] normalizzato in modo che
-    il peso della classe più frequente (correct) sia 1.0.
+    Restituisce un tensore di pesi [3] per CrossEntropyLoss.
+
+    Usa i pesi quadratici (inv^2) invece dei lineari per enfatizzare
+    maggiormente le classi rare, in particolare 'correction' che con
+    pesi lineari veniva completamente ignorata dal modello.
+    Risultati approssimativi:
+        correct    (0): 1.0
+        mistake    (1): ~23.7
+        correction (2): ~133.5
     """
     inv = torch.tensor([
         1.0 / correct_frac,
         1.0 / mistake_frac,
         1.0 / correction_frac,
     ])
+    # Pesi quadratici: amplifica molto di più le classi rare
+    weights = inv ** 2
     # Normalizza rispetto alla classe più frequente
-    weights = inv / inv.min()
-    return weights   # [1.0, ~4.87, ~11.55]
+    weights = weights / weights.min()
+    return weights   # [1.0, ~23.7, ~133.5]
 
 
 # ---------------------------------------------------------------------------
@@ -268,10 +277,26 @@ class TempAggLightningModule(L.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+
+        # ── LR Schedule: LinearWarmup (3 epoche) → CosineAnnealing ────────────
+        # Il warmup evita la memorizzazione immediata osservata all'epoca 0-1.
+        warmup_epochs = 3
+        total_epochs  = self.trainer.max_epochs if self.trainer else 50
+        warmup_sched  = torch.optim.lr_scheduler.LinearLR(
             optimizer,
-            T_max=self.trainer.max_epochs if self.trainer else 50,
-            eta_min=self.hparams.lr * 1e-2,
+            start_factor = 0.1,        # parte da lr * 0.1
+            end_factor   = 1.0,        # arriva a lr
+            total_iters  = warmup_epochs,
+        )
+        cosine_sched = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max    = total_epochs - warmup_epochs,
+            eta_min  = self.hparams.lr * 1e-2,
+        )
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers  = [warmup_sched, cosine_sched],
+            milestones  = [warmup_epochs],
         )
         return {
             "optimizer": optimizer,
@@ -398,8 +423,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--processed_dir",   default="data/processed")
     p.add_argument("--annots_dir",
                    default="data/annotations/assembly101-mistake-detection/annots")
-    p.add_argument("--val_split",       type=float, default=0.20)
-    p.add_argument("--test_split",      type=float, default=0.20)
+    p.add_argument("--val_split",       type=float, default=0.15)
+    p.add_argument("--test_split",      type=float, default=0.15)
     p.add_argument("--batch_size",      type=int,   default=16)
     p.add_argument("--num_workers",     type=int,   default=4)
     # Architettura
@@ -496,8 +521,8 @@ def main() -> None:
     early_stop = EarlyStopping(
         monitor   = "val/recall_mistake",
         mode      = "max",
-        patience  = 10,
-        min_delta = 0.005,
+        patience  = 15,       # aumentata: il modello ha bisogno di più tempo (warmup + correction)
+        min_delta = 0.001,    # abbassata: un miglioramento piccolo conta comunque
     )
 
     # ── Trainer ────────────────────────────────────────────────────────────
