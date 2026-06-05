@@ -70,24 +70,25 @@ def compute_class_weights(
     """
     Restituisce un tensore di pesi [3] per CrossEntropyLoss.
 
-    Usa i pesi quadratici (inv^2) invece dei lineari per enfatizzare
-    maggiormente le classi rare, in particolare 'correction' che con
-    pesi lineari veniva completamente ignorata dal modello.
+    Usa sqrt(1/freq) come compromesso tra:
+      - Pesi lineari (1/freq): correction ignorata (F1=0)
+      - Pesi quadratici (1/freq^2): correction appresa ma mistake penalizzato
+
     Risultati approssimativi:
         correct    (0): 1.0
-        mistake    (1): ~23.7
-        correction (2): ~133.5
+        mistake    (1): ~2.21
+        correction (2): ~3.40
     """
     inv = torch.tensor([
         1.0 / correct_frac,
         1.0 / mistake_frac,
         1.0 / correction_frac,
     ])
-    # Pesi quadratici: amplifica molto di più le classi rare
-    weights = inv ** 2
+    # Radice quadrata: compromesso tra lineare e quadratico
+    weights = inv.sqrt()
     # Normalizza rispetto alla classe più frequente
     weights = weights / weights.min()
-    return weights   # [1.0, ~23.7, ~133.5]
+    return weights   # [1.0, ~2.21, ~3.40]
 
 
 # ---------------------------------------------------------------------------
@@ -137,14 +138,15 @@ class TempAggLightningModule(L.LightningModule):
             dropout=dropout,
         )
 
-        # ── Loss ───────────────────────────────────────────────────────────
+        # ── Loss ──────────────────────────────────────────────────────────────
         class_weights = compute_class_weights(
             correct_frac, mistake_frac, correction_frac
         )
         self.criterion = nn.CrossEntropyLoss(
-            weight=class_weights,
-            ignore_index=-1,   # ignora il padding
-            reduction="mean",
+            weight         = class_weights,
+            ignore_index   = -1,    # ignora il padding
+            reduction      = "mean",
+            label_smoothing= 0.1,   # riduce l'overconfidence (aiuta contro overfitting)
         )
 
         # ── Metriche (per classe 1=mistake, 2=correction) ──────────────────

@@ -45,7 +45,7 @@ PYTHONPATH=. python src/training/training_loop.py \
     --annots_dir      data/annotations/assembly101-mistake-detection/annots \
     --batch_size      4 \
     --num_workers     2 \
-    --hidden_dim      512 \
+    --hidden_dim      256 \
     --dropout         0.3 \
     --spanning_scales 8 16 24 \
     --recent_scales   30 90 150 \
@@ -56,8 +56,7 @@ PYTHONPATH=. python src/training/training_loop.py \
     --seed            42 \
     --wandb_project   mistake-detection \
     --wandb_run_name  "tempagg-baseline-$SLURM_JOB_ID" \
-    --ckpt_dir        experiments/checkpoints \
-    --resume
+    --ckpt_dir        experiments/checkpoints
 
 echo "================================================"
 echo "End: $(date)"
