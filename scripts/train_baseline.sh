@@ -36,16 +36,19 @@ mkdir -p experiments/checkpoints
 
 # ---------- Training ----------
 export WANDB_MODE=offline
+# Riduce la frammentazione della VRAM (consigliato da PyTorch per OOM)
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 PYTHONPATH=. python src/training/training_loop.py \
     --processed_dir   data/processed \
     --annots_dir      data/annotations/assembly101-mistake-detection/annots \
-    --batch_size      8 \
+    --batch_size      4 \
     --num_workers     2 \
     --hidden_dim      512 \
     --dropout         0.1 \
     --spanning_scales 8 16 24 \
     --recent_scales   30 90 150 \
+    --max_seq_len     500 \
     --epochs          50 \
     --lr              1e-4 \
     --weight_decay    1e-5 \

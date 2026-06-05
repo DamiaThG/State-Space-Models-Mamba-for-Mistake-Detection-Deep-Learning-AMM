@@ -296,13 +296,16 @@ class TempAggMistakeDetector(nn.Module):
 
         for scale in self.spanning_scales:
             sp = self.spanning_block(x, scale)  # [B, T, scale, D]
-            
+
             # Causalità è intrinseca in sp! I valori di sp al frame t contengono solo frames da 0 a t.
             # Non servono maschere aggiuntive.
             sp_sa = self.nlb_self(query=sp, key=sp, value=sp)            # [B, T, scale, D]
-            cross_out = self.nlb_cross(query=recent_query, key=sp_sa, value=sp_sa)  # [B, T, D]
+            del sp  # libera VRAM: non serve più dopo la self-attention
 
-            cb_out = self.coupling(cross_out, recent_query)             
+            cross_out = self.nlb_cross(query=recent_query, key=sp_sa, value=sp_sa)  # [B, T, D]
+            del sp_sa  # libera VRAM: non serve più dopo la cross-attention
+
+            cb_out = self.coupling(cross_out, recent_query)
             coupling_outputs.append(cb_out)
 
         # ── 3. Aggregation & Classification ───────────────────────────────

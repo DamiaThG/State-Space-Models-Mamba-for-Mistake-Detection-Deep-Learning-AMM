@@ -31,6 +31,11 @@ class MistakeDetectionDataset(Dataset):
     """
     Dataset generico per Mistake Detection su Assembly101.
     Ogni sample è una sequenza causale completa da frame 0 a end_frame.
+
+    Args:
+        max_seq_len: se specificato, tronca le sequenze più lunghe ai
+            *max_seq_len* frame più recenti (preserva il contesto causale
+            fino a end_idx evitando tensori enormi in GPU).
     """
 
     def __init__(
@@ -38,8 +43,10 @@ class MistakeDetectionDataset(Dataset):
         processed_dir: str,
         annotations_dir: str,
         csv_pattern: str = "*.csv",
+        max_seq_len: Optional[int] = None,
     ):
         self.processed_dir = Path(processed_dir)
+        self.max_seq_len   = max_seq_len
         self.samples = []
 
         csv_files = sorted(Path(annotations_dir).glob(csv_pattern))
@@ -101,6 +108,8 @@ class MistakeDetectionDataset(Dataset):
             print(f"[WARN] {len(missing_pt)} sequenze senza .pt: {missing_pt[:5]}...")
 
         print(f"[INFO] Dataset pronto: {len(self.samples)} sample da {len(csv_files) - len(missing_pt)} sequenze")
+        if max_seq_len is not None:
+            print(f"[INFO] Sequenze troncate a max_seq_len={max_seq_len} frame")
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -113,6 +122,11 @@ class MistakeDetectionDataset(Dataset):
         data     = torch.load(info["pt_path"], weights_only=True)
         features = data["features"][: end_idx + 1]   # [T_storia, 2048]
         labels   = data["labels"][: end_idx + 1]     # [T_storia]
+
+        # Tronca ai max_seq_len frame più recenti se specificato
+        if self.max_seq_len is not None and features.shape[0] > self.max_seq_len:
+            features = features[-self.max_seq_len :]
+            labels   = labels[-self.max_seq_len :]
 
         return {
             "features": features,
@@ -159,11 +173,13 @@ def build_dataloader(
     shuffle: bool = True,
     num_workers: int = 4,
     pin_memory: bool = True,
+    max_seq_len: Optional[int] = None,
 ) -> DataLoader:
-    
+
     dataset = MistakeDetectionDataset(
         processed_dir=processed_dir,
         annotations_dir=annotations_dir,
+        max_seq_len=max_seq_len,
     )
 
     return DataLoader(

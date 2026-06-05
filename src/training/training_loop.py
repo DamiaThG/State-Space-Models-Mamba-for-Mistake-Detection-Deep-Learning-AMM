@@ -410,6 +410,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr",              type=float, default=1e-4)
     p.add_argument("--weight_decay",    type=float, default=1e-5)
     p.add_argument("--seed",            type=int,   default=42)
+    p.add_argument("--max_seq_len",     type=int,   default=None,
+                   help="Lunghezza massima delle sequenze (frame). Quelle più lunghe "
+                        "vengono troncate ai frame più recenti. Consigliato: 500-1000.")
     # Logging
     p.add_argument("--wandb_project",   default="mistake-detection")
     p.add_argument("--wandb_run_name",  default="tempagg-baseline")
@@ -435,6 +438,7 @@ def main() -> None:
         shuffle         = True,
         num_workers     = args.num_workers,
         pin_memory      = (device_str == "cuda"),
+        max_seq_len     = args.max_seq_len,
     )
     val_loader = build_dataloader(
         processed_dir   = args.processed_dir,
@@ -443,6 +447,7 @@ def main() -> None:
         shuffle         = False,
         num_workers     = args.num_workers,
         pin_memory      = (device_str == "cuda"),
+        max_seq_len     = args.max_seq_len,
     )
 
     # ── LightningModule ────────────────────────────────────────────────────
@@ -490,7 +495,7 @@ def main() -> None:
         callbacks           = [ckpt_callback, lr_monitor, early_stop],
         log_every_n_steps   = 10,
         gradient_clip_val   = 1.0,
-        deterministic       = True,
+        deterministic       = "warn",   # True causa crash con roi_pool backward (nessuna impl. deterministica)
     )
 
     trainer.fit(lit_model, train_loader, val_loader)
