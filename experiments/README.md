@@ -1,0 +1,1 @@
+Cartella contenente gli esperimenti effettuati.

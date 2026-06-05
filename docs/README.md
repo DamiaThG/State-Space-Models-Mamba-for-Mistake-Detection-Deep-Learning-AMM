@@ -1,0 +1,1 @@
+Cartella contenente il file markdown del progetto e la presentazione

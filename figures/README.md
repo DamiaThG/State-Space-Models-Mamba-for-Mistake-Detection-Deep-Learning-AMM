@@ -1,0 +1,1 @@
+Cartella contenente eventuali grafici o figure in generale.
