@@ -36,6 +36,7 @@ mkdir -p experiments/checkpoints
 
 # ---------- Training ----------
 export WANDB_MODE=offline
+export PYTHONUNBUFFERED=1
 # Riduce la frammentazione della VRAM (consigliato da PyTorch per OOM)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
@@ -55,7 +56,8 @@ PYTHONPATH=. python src/training/training_loop.py \
     --seed            42 \
     --wandb_project   mistake-detection \
     --wandb_run_name  "tempagg-baseline-$SLURM_JOB_ID" \
-    --ckpt_dir        experiments/checkpoints
+    --ckpt_dir        experiments/checkpoints \
+    --resume
 
 echo "================================================"
 echo "End: $(date)"

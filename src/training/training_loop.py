@@ -18,6 +18,8 @@ import argparse
 import os
 import random
 import sys
+import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -419,16 +421,35 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no_wandb",        action="store_true")
     # Output
     p.add_argument("--ckpt_dir",        default="experiments/checkpoints")
+    p.add_argument("--resume",          action="store_true", help="Riprende l'addestramento da last.ckpt se presente")
     return p.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+
+    # ── Configurazione Logging ─────────────────────────────────────────────
+    log_dir = Path("experiments/logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = log_dir / f"training_{timestamp}.log"
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+    logging.info(f"Avvio addestramento. Log file: {log_file}")
+
     set_seed(args.seed)
     torch.set_float32_matmul_precision("high")
 
     device_str = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"[INFO] Dispositivo: {device_str}")
+    logging.info(f"Dispositivo: {device_str}")
 
     # ── DataLoader ─────────────────────────────────────────────────────────
     train_loader = build_dataloader(
@@ -498,11 +519,20 @@ def main() -> None:
         deterministic       = "warn",   # True causa crash con roi_pool backward (nessuna impl. deterministica)
     )
 
-    trainer.fit(lit_model, train_loader, val_loader)
+    ckpt_path = None
+    if args.resume:
+        last_ckpt = os.path.join(args.ckpt_dir, "last.ckpt")
+        if os.path.exists(last_ckpt):
+            logging.info(f"Ripresa dell'addestramento dal checkpoint: {last_ckpt}")
+            ckpt_path = last_ckpt
+        else:
+            logging.warning(f"Flag --resume usato, ma {last_ckpt} non trovato. Partenza da zero.")
+
+    trainer.fit(lit_model, train_loader, val_loader, ckpt_path=ckpt_path)
 
     # Stampa metriche finali
-    print("\n[INFO] Training completato.")
-    print(f"[INFO] Best checkpoint: {ckpt_callback.best_model_path}")
+    logging.info("Training completato.")
+    logging.info(f"Best checkpoint: {ckpt_callback.best_model_path}")
 
     if not args.no_wandb:
         wandb.finish()
