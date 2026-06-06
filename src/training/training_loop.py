@@ -237,8 +237,9 @@ class MistakeDetectionLightningModule(L.LightningModule):
         self, batch: Dict[str, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         loss, _, _ = self._shared_step(batch, "train")
+        B = batch["features"].shape[0]
         self.log("train/loss", loss, on_step=True, on_epoch=True,
-                 prog_bar=True, sync_dist=True)
+                 prog_bar=True, sync_dist=True, batch_size=B)
         return loss
 
     # ------------------------------------------------------------------
@@ -252,8 +253,9 @@ class MistakeDetectionLightningModule(L.LightningModule):
         self.val_precision.update(preds[valid], labels[valid])
         self.val_recall.update(preds[valid], labels[valid])
 
+        B = batch["features"].shape[0]
         self.log("val/loss", loss, on_step=False, on_epoch=True,
-                 prog_bar=True, sync_dist=True)
+                 prog_bar=True, sync_dist=True, batch_size=B)
 
     def on_validation_epoch_end(self) -> None:
         self._log_per_class_metrics("val", self.val_precision, self.val_recall)
@@ -269,7 +271,8 @@ class MistakeDetectionLightningModule(L.LightningModule):
         valid = labels != -1
         self.test_precision.update(preds[valid], labels[valid])
         self.test_recall.update(preds[valid], labels[valid])
-        self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
+        B = batch["features"].shape[0]
+        self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True, batch_size=B)
 
     def on_test_epoch_end(self) -> None:
         self._log_per_class_metrics("test", self.test_precision, self.test_recall)
@@ -596,6 +599,7 @@ def main() -> None:
         max_epochs          = args.epochs,
         accelerator         = "auto",
         devices             = "auto",
+        precision           = "16-mixed",   # AMP FP16: ~40% risparmio VRAM
         logger              = loggers if loggers else False,
         callbacks           = [ckpt_callback, lr_monitor, early_stop],
         log_every_n_steps   = 10,

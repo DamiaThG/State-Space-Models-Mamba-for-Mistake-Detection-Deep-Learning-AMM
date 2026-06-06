@@ -8,8 +8,10 @@
 #SBATCH --job-name=mamba_ssm
 #SBATCH --output=experiments/logs/mamba_%j.out
 #SBATCH --error=experiments/logs/mamba_%j.err
+#SBATCH --qos=gpu-xlarge
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
+#SBATCH --gres=shard:22000
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00
@@ -41,12 +43,12 @@ PYTHONPATH=. python src/training/training_loop.py \
     --model           mamba \
     --processed_dir   data/processed \
     --annots_dir      data/annotations/assembly101-mistake-detection/annots \
-    --batch_size      4 \
+    --batch_size      2 \
     --num_workers     2 \
     --d_model         512 \
     --n_layers        6 \
     --dropout         0.3 \
-    --max_seq_len     500 \
+    --max_seq_len     4096 \
     --epochs          50 \
     --lr              5e-5 \
     --weight_decay    1e-3 \
