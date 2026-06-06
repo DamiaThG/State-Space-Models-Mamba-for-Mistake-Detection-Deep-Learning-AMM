@@ -1,17 +1,30 @@
 """
-Training Loop — TempAgg Baseline per Mistake Detection
-=======================================================
+Training Loop — Mistake Detection (Multi-Model)
+=================================================
 Struttura basata su PyTorch Lightning + Weights & Biases.
+Supporta la selezione del modello tramite --model (tempagg | mamba).
 
 Uso rapido:
-    python src/training/training_loop.py \
-        --processed_dir   data/processed \
-        --annots_dir      data/annotations/assembly101-mistake-detection/annots \
-        --epochs          50 \
-        --batch_size      16 \
+    # TempAgg (baseline)
+    python src/training/training_loop.py \\
+        --model tempagg \\
+        --processed_dir   data/processed \\
+        --annots_dir      data/annotations/assembly101-mistake-detection/annots \\
+        --epochs          50 \\
+        --batch_size      16 \\
         --wandb_project   mistake-detection
 
-Per il cluster SLURM: usa `scripts/train_baseline.sh` (generato alla fine).
+    # Mamba (SSM)
+    python src/training/training_loop.py \\
+        --model mamba \\
+        --d_model 512 --n_layers 6 \\
+        --processed_dir   data/processed \\
+        --annots_dir      data/annotations/assembly101-mistake-detection/annots \\
+        --epochs          50 \\
+        --batch_size      16 \\
+        --wandb_project   mistake-detection
+
+Per il cluster SLURM: usa `scripts/train_baseline.sh` o `scripts/train_mamba.sh`.
 """
 
 import argparse
@@ -38,6 +51,7 @@ from torchmetrics import Precision, Recall
 
 # Importazioni dalla root del progetto (eseguire sempre dalla root)
 from src.models.baseline import TempAggMistakeDetector
+from src.models.mamba_model import MambaMistakeDetector
 from src.datasets.dataloader import build_split_dataloaders
 
 
@@ -89,12 +103,45 @@ def compute_class_weights(
 
 
 # ---------------------------------------------------------------------------
-# LightningModule
+# Model Factory
 # ---------------------------------------------------------------------------
 
-class TempAggLightningModule(L.LightningModule):
+def build_model(args: argparse.Namespace) -> nn.Module:
     """
-    LightningModule che incapsula TempAggMistakeDetector.
+    Istanzia il modello corretto in base a --model.
+
+    Returns:
+        nn.Module con interfaccia forward(features, attention_mask) → logits.
+    """
+    if args.model == "tempagg":
+        return TempAggMistakeDetector(
+            input_dim=2048,
+            hidden_dim=args.hidden_dim,
+            num_classes=3,
+            spanning_scales=args.spanning_scales,
+            recent_scales=args.recent_scales,
+            dropout=args.dropout,
+        )
+    elif args.model == "mamba":
+        return MambaMistakeDetector(
+            input_dim=2048,
+            d_model=args.d_model,
+            n_layers=args.n_layers,
+            num_classes=3,
+            dropout=args.dropout,
+        )
+    else:
+        raise ValueError(f"Modello sconosciuto: {args.model}. Scegli tra: tempagg, mamba")
+
+
+# ---------------------------------------------------------------------------
+# LightningModule (generico, model-agnostic)
+# ---------------------------------------------------------------------------
+
+class MistakeDetectionLightningModule(L.LightningModule):
+    """
+    LightningModule generico per Mistake Detection.
+    Accetta qualsiasi nn.Module con interfaccia forward(features, attention_mask) → logits.
 
     Gestisce:
       - Forward pass con attention_mask
@@ -106,13 +153,7 @@ class TempAggLightningModule(L.LightningModule):
 
     def __init__(
         self,
-        # Architettura
-        input_dim:       int   = 2048,
-        hidden_dim:      int   = 512,
-        num_classes:     int   = 3,
-        spanning_scales        = [8, 16, 32, 64],
-        recent_scales          = [1, 2, 4],
-        dropout:         float = 0.1,
+        model:           nn.Module,
         # Ottimizzazione
         lr:              float = 1e-4,
         weight_decay:    float = 1e-5,
@@ -121,19 +162,13 @@ class TempAggLightningModule(L.LightningModule):
         correct_frac:    float = 0.774,
         mistake_frac:    float = 0.159,
         correction_frac: float = 0.067,
+        num_classes:     int   = 3,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["model"])
 
         # ── Modello ────────────────────────────────────────────────────────
-        self.model = TempAggMistakeDetector(
-            input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            num_classes=num_classes,
-            spanning_scales=spanning_scales,
-            recent_scales=recent_scales,
-            dropout=dropout,
-        )
+        self.model = model
 
         # ── Loss ──────────────────────────────────────────────────────────────
         class_weights = compute_class_weights(
@@ -308,6 +343,10 @@ class TempAggLightningModule(L.LightningModule):
         }
 
 
+# Alias per backward-compatibility (script che importano il vecchio nome)
+TempAggLightningModule = MistakeDetectionLightningModule
+
+
 # ---------------------------------------------------------------------------
 # Funzioni standalone (alternativa a Lightning per debug rapido)
 # ---------------------------------------------------------------------------
@@ -418,7 +457,13 @@ def train_epoch(
 # ---------------------------------------------------------------------------
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="TempAgg Baseline — Mistake Detection")
+    p = argparse.ArgumentParser(description="Mistake Detection — Multi-Model Training")
+
+    # Selezione modello
+    p.add_argument("--model", type=str, default="tempagg",
+                   choices=["tempagg", "mamba"],
+                   help="Architettura del modello (default: tempagg)")
+
     # Dati
     p.add_argument("--processed_dir",   default="data/processed")
     p.add_argument("--annots_dir",
@@ -427,11 +472,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--test_split",      type=float, default=0.15)
     p.add_argument("--batch_size",      type=int,   default=16)
     p.add_argument("--num_workers",     type=int,   default=4)
-    # Architettura
-    p.add_argument("--hidden_dim",      type=int,   default=512)
-    p.add_argument("--dropout",         type=float, default=0.1)
+
+    # Architettura — TempAgg
+    p.add_argument("--hidden_dim",      type=int,   default=512,
+                   help="Dimensione nascosta per TempAgg (default: 512)")
     p.add_argument("--spanning_scales", type=int,   nargs="+", default=[8, 16, 24])
     p.add_argument("--recent_scales",   type=int,   nargs="+", default=[30, 90, 150])
+
+    # Architettura — Mamba
+    p.add_argument("--d_model",  type=int, default=512,
+                   help="Dimensione interna del modello Mamba (default: 512)")
+    p.add_argument("--n_layers", type=int, default=6,
+                   help="Numero di layer Mamba (default: 6)")
+
+    # Architettura — Comune
+    p.add_argument("--dropout",         type=float, default=0.1)
+
     # Training
     p.add_argument("--epochs",          type=int,   default=50)
     p.add_argument("--lr",              type=float, default=1e-4)
@@ -440,13 +496,18 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max_seq_len",     type=int,   default=None,
                    help="Lunghezza massima delle sequenze (frame). Quelle più lunghe "
                         "vengono troncate ai frame più recenti. Consigliato: 500-1000.")
+
     # Logging
     p.add_argument("--wandb_project",   default="mistake-detection")
-    p.add_argument("--wandb_run_name",  default="tempagg-baseline")
+    p.add_argument("--wandb_run_name",  default=None,
+                   help="Nome del run WandB (default: auto-generato dal modello)")
     p.add_argument("--no_wandb",        action="store_true")
+
     # Output
     p.add_argument("--ckpt_dir",        default="experiments/checkpoints")
-    p.add_argument("--resume",          action="store_true", help="Riprende l'addestramento da last.ckpt se presente")
+    p.add_argument("--resume",          action="store_true",
+                   help="Riprende l'addestramento da last.ckpt se presente")
+
     return p.parse_args()
 
 
@@ -457,7 +518,7 @@ def main() -> None:
     log_dir = Path("experiments/logs")
     log_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"training_{timestamp}.log"
+    log_file = log_dir / f"training_{args.model}_{timestamp}.log"
 
     logging.basicConfig(
         level=logging.INFO,
@@ -468,7 +529,7 @@ def main() -> None:
         ]
     )
 
-    logging.info(f"Avvio addestramento. Log file: {log_file}")
+    logging.info(f"Avvio addestramento modello: {args.model}. Log file: {log_file}")
 
     set_seed(args.seed)
     torch.set_float32_matmul_precision("high")
@@ -489,29 +550,34 @@ def main() -> None:
         seed            = args.seed,
     )
 
+    # ── Modello (factory) ──────────────────────────────────────────────────
+    model = build_model(args)
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logging.info(f"Modello: {args.model} — Parametri trainabili: {total_params:,}")
+
     # ── LightningModule ────────────────────────────────────────────────────
-    lit_model = TempAggLightningModule(
-        hidden_dim      = args.hidden_dim,
-        dropout         = args.dropout,
-        spanning_scales = args.spanning_scales,
-        recent_scales   = args.recent_scales,
-        lr              = args.lr,
-        weight_decay    = args.weight_decay,
+    lit_model = MistakeDetectionLightningModule(
+        model        = model,
+        lr           = args.lr,
+        weight_decay = args.weight_decay,
     )
 
     # ── Logger & Callbacks ─────────────────────────────────────────────────
+    # Nome del run auto-generato se non specificato
+    run_name = args.wandb_run_name or f"{args.model}-{timestamp}"
+
     loggers = []
     if not args.no_wandb:
         wandb_logger = WandbLogger(
             project = args.wandb_project,
-            name    = args.wandb_run_name,
+            name    = run_name,
             config  = vars(args),
         )
         loggers.append(wandb_logger)
 
     ckpt_callback = ModelCheckpoint(
         dirpath      = args.ckpt_dir,
-        filename     = "tempagg-{epoch:02d}-{val/loss:.4f}",
+        filename     = f"{args.model}" + "-{epoch:02d}-{val/loss:.4f}",
         monitor      = "val/loss",
         mode         = "min",
         save_top_k   = 3,
