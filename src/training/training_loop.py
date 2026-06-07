@@ -496,6 +496,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr",              type=float, default=1e-4)
     p.add_argument("--weight_decay",    type=float, default=1e-5)
     p.add_argument("--seed",            type=int,   default=42)
+    p.add_argument("--accumulate_grad_batches", type=int, default=1,
+                   help="Accumula i gradienti ogni N batch prima di un optimizer step "
+                        "(utile per simulare batch size più grandi con poca VRAM).")
     p.add_argument("--max_seq_len",     type=int,   default=None,
                    help="Lunghezza massima delle sequenze (frame). Quelle più lunghe "
                         "vengono troncate ai frame più recenti. Consigliato: 500-1000.")
@@ -596,15 +599,16 @@ def main() -> None:
 
     # ── Trainer ────────────────────────────────────────────────────────────
     trainer = L.Trainer(
-        max_epochs          = args.epochs,
-        accelerator         = "auto",
-        devices             = "auto",
-        precision           = "16-mixed",   # AMP FP16: ~40% risparmio VRAM
-        logger              = loggers if loggers else False,
-        callbacks           = [ckpt_callback, lr_monitor, early_stop],
-        log_every_n_steps   = 10,
-        gradient_clip_val   = 1.0,
-        deterministic       = "warn",   # True causa crash con roi_pool backward (nessuna impl. deterministica)
+        max_epochs               = args.epochs,
+        accelerator              = "auto",
+        devices                  = "auto",
+        precision                = "16-mixed",   # AMP FP16: ~40% risparmio VRAM
+        logger                   = loggers if loggers else False,
+        callbacks                = [ckpt_callback, lr_monitor, early_stop],
+        log_every_n_steps        = 10,
+        gradient_clip_val        = 1.0,
+        accumulate_grad_batches  = args.accumulate_grad_batches,
+        deterministic            = "warn",   # True causa crash con roi_pool backward (nessuna impl. deterministica)
     )
 
     ckpt_path = None

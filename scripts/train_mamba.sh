@@ -45,10 +45,11 @@ PYTHONPATH=. python src/training/training_loop.py \
     --annots_dir      data/annotations/assembly101-mistake-detection/annots \
     --batch_size      2 \
     --num_workers     2 \
+    --accumulate_grad_batches 4 \
     --d_model         512 \
     --n_layers        6 \
     --dropout         0.3 \
-    --max_seq_len     4096 \
+    --max_seq_len     2048 \
     --epochs          50 \
     --lr              5e-5 \
     --weight_decay    1e-3 \
