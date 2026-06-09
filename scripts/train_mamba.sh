@@ -41,13 +41,13 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 PYTHONPATH=. python src/training/train_mamba_whole_video.py \
     --processed_dir   data/processed \
-    --batch_size      2 \
+    --batch_size      1 \
     --num_workers     2 \
-    --accumulate_grad_batches 4 \
+    --accumulate_grad_batches 8 \
     --d_model         512 \
     --n_layers        6 \
     --dropout         0.2 \
-    --max_seq_len     20000 \
+    --max_seq_len     8000 \
     --use_checkpointing \
     --epochs          50 \
     --lr              5e-5 \
@@ -56,6 +56,7 @@ PYTHONPATH=. python src/training/train_mamba_whole_video.py \
     --wandb_project   mistake-detection \
     --wandb_run_name  "mamba-wholevideo-$SLURM_JOB_ID" \
     --ckpt_dir        experiments/checkpoints
+
 
 
 echo "================================================"
