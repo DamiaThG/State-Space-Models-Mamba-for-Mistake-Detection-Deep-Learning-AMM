@@ -17,3 +17,6 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+
+#mamba
+mamba_env.tar
