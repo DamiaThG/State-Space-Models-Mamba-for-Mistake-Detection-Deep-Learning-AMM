@@ -23,24 +23,33 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-# --- WORKAROUND BUG TORCHVISION 0.20.1+ ---
-# La versione di torchvision nel container PyTorch 2.6+ ha un bug di circular
-# import: torchvision/__init__.py importa _meta_registrations, che chiama
-# torchvision.extension._has_ops() prima che il modulo sia completamente
-# inizializzato. Pre-registriamo uno stub minimale per rompere il ciclo.
-import sys
-import types as _types
-
-_ext_stub = _types.ModuleType("torchvision.extension")
-_ext_stub._has_ops = lambda: False
-_ext_stub._assert_has_ops = lambda: None
-sys.modules["torchvision.extension"] = _ext_stub
-
-import torchvision  # noqa: E402  — ora l'import reale completa senza errori
-# ----------------------------------------
-
 import numpy as np
 import torch
+
+# --- WORKAROUND PER TORCHVISION ROTTO NEL CONTAINER ---
+# Nel container la versione di torch (2.12) e torchvision (0.21) non combaciano,
+# quindi le estensioni C++ di torchvision non vengono caricate. Questo fa
+# crashare l'importazione quando PyTorch cerca di registrare gli operatori mancanti.
+# Creiamo un mock temporaneo per ignorare gli errori "does not exist".
+original_register_fake = torch.library.register_fake
+
+def mock_register_fake(name, *args, **kwargs):
+    def decorator(fn):
+        try:
+            return original_register_fake(name, *args, **kwargs)(fn)
+        except RuntimeError as e:
+            if "does not exist" in str(e):
+                return fn  # Ignora l'errore per gli operatori C++ mancanti
+            raise
+    return decorator
+
+torch.library.register_fake = mock_register_fake
+
+import torchvision
+
+# Ripristino la funzione originale
+torch.library.register_fake = original_register_fake
+# --------------------------------------------------------
 import wandb
 import lightning as L
 from lightning.pytorch.loggers import WandbLogger
