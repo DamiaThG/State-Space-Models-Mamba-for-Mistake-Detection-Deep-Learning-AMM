@@ -24,13 +24,19 @@ from datetime import datetime
 from pathlib import Path
 
 # --- WORKAROUND BUG TORCHVISION 0.20.1+ ---
-# La versione di torchvision presente nel container PyTorch 2.6 ha un bug noto 
-# di "circular import" su torchvision.extension. Importarlo prima risolve il problema.
-try:
-    import torchvision.extension
-    import torchvision
-except Exception:
-    pass
+# La versione di torchvision nel container PyTorch 2.6+ ha un bug di circular
+# import: torchvision/__init__.py importa _meta_registrations, che chiama
+# torchvision.extension._has_ops() prima che il modulo sia completamente
+# inizializzato. Pre-registriamo uno stub minimale per rompere il ciclo.
+import sys
+import types as _types
+
+_ext_stub = _types.ModuleType("torchvision.extension")
+_ext_stub._has_ops = lambda: False
+_ext_stub._assert_has_ops = lambda: None
+sys.modules["torchvision.extension"] = _ext_stub
+
+import torchvision  # noqa: E402  — ora l'import reale completa senza errori
 # ----------------------------------------
 
 import numpy as np
