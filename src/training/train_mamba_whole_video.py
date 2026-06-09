@@ -23,6 +23,16 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+# --- WORKAROUND BUG TORCHVISION 0.20.1+ ---
+# La versione di torchvision presente nel container PyTorch 2.6 ha un bug noto 
+# di "circular import" su torchvision.extension. Importarlo prima risolve il problema.
+try:
+    import torchvision.extension
+    import torchvision
+except Exception:
+    pass
+# ----------------------------------------
+
 import numpy as np
 import torch
 import wandb

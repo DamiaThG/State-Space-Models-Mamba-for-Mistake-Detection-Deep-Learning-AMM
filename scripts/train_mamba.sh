@@ -8,9 +8,9 @@
 #SBATCH --job-name=mamba_ssm
 #SBATCH --output=experiments/logs/mamba_%j.out
 #SBATCH --error=experiments/logs/mamba_%j.err
+#SBATCH --account=dl-course-q2
+#SBATCH --partition=dl-course-q2
 #SBATCH --qos=gpu-xlarge
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
 #SBATCH --gres=shard:22000
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
@@ -36,6 +36,7 @@ mkdir -p experiments/checkpoints
 # ---------- Training ----------
 export WANDB_MODE=offline
 export PYTHONUNBUFFERED=1
+export PYTHONNOUSERSITE=1
 # Riduce la frammentazione della VRAM (consigliato da PyTorch per OOM)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
