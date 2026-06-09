@@ -24,7 +24,6 @@ mkdir -p experiments/checkpoints
 # ---------- Environment ----------
 export WANDB_MODE=offline
 export PYTHONUNBUFFERED=1
-export PYTHONNOUSERSITE=1
 # Riduce la frammentazione della VRAM (consigliato da PyTorch per OOM)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
