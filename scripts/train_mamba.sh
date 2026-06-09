@@ -3,6 +3,10 @@
 # SLURM Job Script — Mamba SSM Training
 # Cluster: GCluster (gcluster.dmi.unict.it)
 # Sottometti con: sbatch scripts/train_mamba.sh
+#
+# NOTA: Questo script è il wrapper SLURM+Apptainer.
+# La logica di training vera è in scripts/run_train_mamba.sh,
+# che può essere eseguito direttamente dentro mamba-docker.
 # ============================================================
 
 #SBATCH --job-name=mamba_ssm
@@ -24,48 +28,19 @@ echo "Start     : $(date)"
 echo "Working   : $(pwd)"
 echo "================================================"
 
-# Attiva l'ambiente conda/venv del progetto (modifica il nome se necessario)
-# source activate mistake-detection
-# oppure:
-# source .venv/bin/activate
-
 # ---------- Logging dir ----------
 mkdir -p experiments/logs
 mkdir -p experiments/checkpoints
 
-# ---------- Training ----------
-export WANDB_MODE=offline
-export PYTHONUNBUFFERED=1
-export PYTHONNOUSERSITE=1
-# Riduce la frammentazione della VRAM (consigliato da PyTorch per OOM)
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-
-# Utilizzo Apptainer per isolare l'ambiente (sostituisci mamba_env.sif col nome corretto)
+# ---------- Lancio nel container ----------
 APPTAINER_IMAGE="mamba_env.sif"
 
 apptainer exec --nv \
     --bind $(pwd):/workspace \
     --pwd /workspace \
     $APPTAINER_IMAGE \
-    python src/training/train_mamba_whole_video.py \
-    --processed_dir   data/processed \
-    --batch_size      4 \
-    --num_workers     4 \
-    --accumulate_grad_batches 2 \
-    --d_model         512 \
-    --n_layers        6 \
-    --dropout         0.2 \
-    --max_seq_len     25000 \
-    --use_checkpointing \
-    --epochs          50 \
-    --lr              5e-5 \
-    --weight_decay    1e-3 \
-    --seed            42 \
-    --wandb_project   mistake-detection \
-    --wandb_run_name  "mamba-ssm-wholevid-$SLURM_JOB_ID" \
-    --ckpt_dir        experiments/checkpoints
-
-
+    bash /workspace/scripts/run_train_mamba.sh \
+    --wandb_run_name "mamba-ssm-wholevid-$SLURM_JOB_ID"
 
 echo "================================================"
 echo "End: $(date)"

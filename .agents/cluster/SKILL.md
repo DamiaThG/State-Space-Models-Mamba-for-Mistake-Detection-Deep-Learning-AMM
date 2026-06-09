@@ -9,9 +9,18 @@ Tutto il codice che genererai verrà eseguito all'interno del **GCluster (gclust
 
 Devi rispettare rigorosamente le seguenti regole legate all'ambiente di esecuzione:
 
-* **Niente esecuzioni interattive pesanti:** I training loop e le estrazioni di feature non devono mai essere pensati per l'esecuzione diretta da terminale. Devi sempre prevedere e fornire uno script Bash (`.sh`) contenente le direttive `#SBATCH` necessarie per sottomettere il job al cluster.
+* **Architettura a due livelli per gli script (FONDAMENTALE):**
+  Ogni task (training, estrazione feature, valutazione, ecc.) deve avere **due script separati**:
+  1. **Runner (`scripts/run_<task>.sh`):** Contiene tutta la logica di esecuzione (export delle variabili d'ambiente, chiamata a Python, parametri di default). NON contiene direttive `#SBATCH` né chiamate ad `apptainer`. Può essere eseguito direttamente dentro una sessione interattiva del container (es. tramite l'alias `mamba-docker`). Accetta argomenti extra via `"$@"` per sovrascrivere i default.
+  2. **Wrapper SLURM (`scripts/<task>.sh`):** Contiene solo le direttive `#SBATCH` e la chiamata ad `apptainer exec ... bash /workspace/scripts/run_<task>.sh`. Non duplica la logica del runner.
+
+  **Esempi di utilizzo:**
+  - **Interattivo:** `mamba-docker` → `cd /path/to/project` → `./scripts/run_train_mamba.sh`
+  - **Batch:** `sbatch scripts/train_mamba.sh` (dal nodo di login)
+
 * **Hardware:** Il codice deve essere "Device Agnostic" ma ottimizzato per GPU. Usa sempre costrutti come `device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')`. Assicurati di svuotare la cache VRAM (`torch.cuda.empty_cache()`) alla fine delle epoche di validazione per evitare Out-Of-Memory.
 * **Logging:** In ambienti SLURM, l'output standard viene reindirizzato su file di testo (`.out`/`.err`). Configura `tqdm` in modo che non crei artefatti visivi nei log di testo (es. usa `mininterval=2.0` o log testuali per le epoche).
+* **Container Apptainer:** L'immagine SIF di riferimento è `mamba_env.sif` situata nella home del cluster. L'alias `mamba-docker` lancia una sessione interattiva con GPU tramite `srun + apptainer shell --nv`.
 
 ## 3. Librerie e Gestione delle Dipendenze
 
