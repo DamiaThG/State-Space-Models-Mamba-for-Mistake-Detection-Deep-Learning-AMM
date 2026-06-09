@@ -283,3 +283,165 @@ def build_split_dataloaders(
     )
 
     return train_loader, val_loader, test_loader
+
+
+# ---------------------------------------------------------------------------
+# Dataloader a Video Intero per Mamba / xLSTM
+# ---------------------------------------------------------------------------
+
+class WholeVideoDataset(Dataset):
+    """
+    Dataset per modelli Sequence-to-Sequence (SSM, xLSTM).
+    Carica l'intero video (da frame 0 all'ultimo frame disponibile).
+    
+    Args:
+        max_seq_len: limite massimo di frame. Se il video è più lungo,
+                     viene troncato *all'inizio* (mantenendo i frame recenti), 
+                     dato che la maggior parte delle azioni si concentra a fine video.
+    """
+    def __init__(
+        self,
+        processed_dir: str,
+        max_seq_len: Optional[int] = 20000,
+    ):
+        self.processed_dir = Path(processed_dir)
+        self.max_seq_len = max_seq_len
+        self.samples = []
+
+        pt_files = sorted(self.processed_dir.glob("*.pt"))
+        if not pt_files:
+            raise FileNotFoundError(f"Nessun .pt trovato in '{processed_dir}'")
+
+        for pt_path in pt_files:
+            sequence_name = pt_path.stem
+            try:
+                data = torch.load(pt_path, weights_only=True)
+                length = data["features"].shape[0]
+                
+                # Applichiamo già qui la logica del max_seq_len per facilitare 
+                # il calcolo della lunghezza finale nel sampler
+                final_length = min(length, self.max_seq_len) if self.max_seq_len else length
+                
+                self.samples.append({
+                    "sequence_name": sequence_name,
+                    "pt_path": str(pt_path),
+                    "length": final_length,
+                    "original_length": length
+                })
+            except Exception as e:
+                print(f"[WARN] Errore lettura pt {pt_path}: {e} — skip")
+                continue
+
+        print(f"[INFO] WholeVideoDataset pronto: {len(self.samples)} video completi")
+        if max_seq_len is not None:
+            print(f"[INFO] Sequenze lunghe verranno troncate mantenendo gli ultimi {max_seq_len} frame")
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> dict:
+        info = self.samples[idx]
+        data = torch.load(info["pt_path"], weights_only=True)
+        
+        features = data["features"]  # [T, D]
+        labels   = data["labels"]    # [T]
+
+        # Troncamento tail-oriented (tiene la fine del video)
+        if self.max_seq_len is not None and features.shape[0] > self.max_seq_len:
+            features = features[-self.max_seq_len :]
+            labels   = labels[-self.max_seq_len :]
+
+        return {
+            "features": features,
+            "labels": labels,
+            "sequence_name": info["sequence_name"],
+            "original_length": info["original_length"],
+        }
+
+
+def build_whole_video_dataloaders(
+    processed_dir: str,
+    batch_size: int = 4,
+    val_split: float = 0.15,
+    test_split: float = 0.15,
+    num_workers: int = 4,
+    pin_memory: bool = True,
+    max_seq_len: Optional[int] = 20000,
+    seed: int = 42,
+) -> Tuple[DataLoader, DataLoader, Optional[DataLoader]]:
+    
+    from src.datasets.samplers import LengthGroupedSampler
+    
+    dataset = WholeVideoDataset(
+        processed_dir=processed_dir,
+        max_seq_len=max_seq_len,
+    )
+
+    indices = list(range(len(dataset)))
+    rng = random.Random(seed)
+    rng.shuffle(indices)
+
+    n = len(indices)
+    n_test  = int(n * test_split)
+    n_val   = int(n * val_split)
+    n_train = n - n_val - n_test
+
+    train_idx = indices[:n_train]
+    val_idx   = indices[n_train : n_train + n_val]
+    test_idx  = indices[n_train + n_val :]
+
+    train_subset = Subset(dataset, train_idx)
+    val_subset   = Subset(dataset, val_idx)
+    test_subset  = Subset(dataset, test_idx) if test_idx else None
+
+    print(
+        f"[INFO] Split video interi → train: {len(train_idx)}, "
+        f"val: {len(val_idx)}, test: {len(test_idx)}"
+    )
+
+    loader_kwargs = dict(
+        num_workers=num_workers,
+        pin_memory=pin_memory and torch.cuda.is_available(),
+        collate_fn=generic_collate_fn,
+        persistent_workers=num_workers > 0,
+    )
+
+    # Per il training usiamo il LengthGroupedSampler
+    # N.B. Se si usa batch_sampler o custom sampler che fa yield di singoli index, 
+    # DataLoader con batch_size e sampler comporra' il batch.
+    # Il LengthGroupedSampler restituisce singoli indici raggruppati, quindi va in `sampler=`
+    train_sampler = LengthGroupedSampler(train_subset, batch_size=batch_size, shuffle=True, seed=seed)
+    
+    train_loader = DataLoader(
+        train_subset,
+        batch_size=batch_size,
+        sampler=train_sampler,
+        shuffle=False, # Shuffle è gestito dal sampler
+        **loader_kwargs
+    )
+    
+    # Per val e test l'ordinamento sequenziale è preferibile e meno impattante
+    # Possiamo usare anche lì un sampler per lunghezza o uno standard sequential
+    val_sampler = LengthGroupedSampler(val_subset, batch_size=batch_size, shuffle=False)
+    val_loader = DataLoader(
+        val_subset,
+        batch_size=batch_size,
+        sampler=val_sampler,
+        shuffle=False,
+        **loader_kwargs
+    )
+    
+    if test_subset:
+        test_sampler = LengthGroupedSampler(test_subset, batch_size=batch_size, shuffle=False)
+        test_loader = DataLoader(
+            test_subset,
+            batch_size=batch_size,
+            sampler=test_sampler,
+            shuffle=False,
+            **loader_kwargs
+        )
+    else:
+        test_loader = None
+
+    return train_loader, val_loader, test_loader
+

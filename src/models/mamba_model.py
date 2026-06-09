@@ -41,11 +41,13 @@ class MambaMistakeDetector(nn.Module):
         d_model:     int   = 512,
         n_layers:    int   = 6,
         num_classes: int   = 3,
-        dropout:     float = 0.1,
+        dropout:     float = 0.2,
+        use_checkpointing: bool = False,
     ) -> None:
         super().__init__()
 
         self.d_model = d_model
+        self.use_checkpointing = use_checkpointing
 
         # ── 1. Input Projection ───────────────────────────────────────────
         # Proietta le feature TSM dallo spazio 2048-dim allo spazio d_model.
@@ -117,7 +119,10 @@ class MambaMistakeDetector(nn.Module):
         # 2. Backbone Mamba: [B, T, d_model] → [B, T, d_model]
         #    Mamba è intrinsecamente causale: l'output al timestep t
         #    dipende solo dagli input ai timestep 0, 1, ..., t.
-        x = self.backbone(x)
+        if self.use_checkpointing and self.training:
+            x = torch.utils.checkpoint.checkpoint(self.backbone, x, use_reentrant=False)
+        else:
+            x = self.backbone(x)
 
         # 3. Classification head: [B, T, d_model] → [B, T, 3]
         logits = self.cls_head(x)
