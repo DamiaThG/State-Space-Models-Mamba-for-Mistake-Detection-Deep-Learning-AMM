@@ -19,9 +19,17 @@ from typing import Optional
 import torch
 import torch.nn as nn
 
-# pyrefly: ignore [missing-import]
-from mambapy.mamba import Mamba, MambaConfig
+from mamba_ssm import Mamba
 
+class MambaBlock(nn.Module):
+    """Singolo blocco Mamba con pre-LayerNorm e Residual Connection."""
+    def __init__(self, d_model: int):
+        super().__init__()
+        self.norm = nn.LayerNorm(d_model)
+        self.mixer = Mamba(d_model=d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.mixer(self.norm(x)) + x
 
 class MambaMistakeDetector(nn.Module):
     """
@@ -50,8 +58,6 @@ class MambaMistakeDetector(nn.Module):
         self.use_checkpointing = use_checkpointing
 
         # ── 1. Input Projection ───────────────────────────────────────────
-        # Proietta le feature TSM dallo spazio 2048-dim allo spazio d_model.
-        # LayerNorm stabilizza le attivazioni prima del backbone SSM.
         self.input_proj = nn.Sequential(
             nn.Linear(input_dim, d_model),
             nn.LayerNorm(d_model),
@@ -60,22 +66,12 @@ class MambaMistakeDetector(nn.Module):
         )
 
         # ── 2. Mamba SSM Backbone ─────────────────────────────────────────
-        # MambaConfig configura l'architettura interna di ogni blocco Mamba:
-        #   - d_model: dimensione dello stato nascosto
-        #   - n_layers: quanti blocchi Mamba impilare in sequenza
-        # Ogni blocco Mamba contiene:
-        #   - Conv1d causale (depthwise) per catturare pattern locali
-        #   - SSM (State-Space Model) selettivo per dipendenze a lungo termine
-        #   - Gate multiplicativo (SiLU) per controllo del flusso informativo
-        self.mamba_config = MambaConfig(
-            d_model=d_model,
-            n_layers=n_layers,
-        )
-        self.backbone = Mamba(self.mamba_config)
+        # Usiamo il pacchetto ufficiale mamba-ssm in C++
+        self.backbone = nn.ModuleList([
+            MambaBlock(d_model=d_model) for _ in range(n_layers)
+        ])
 
         # ── 3. Classification Head ────────────────────────────────────────
-        # Mappa l'output del backbone nello spazio delle 3 classi.
-        # LayerNorm pre-head migliora la stabilità del training.
         self.cls_head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, d_model // 2),
@@ -102,27 +98,17 @@ class MambaMistakeDetector(nn.Module):
     ) -> torch.Tensor:
         """
         Forward pass del modello.
-
-        Args:
-            features:       [B, T_max, 2048] — feature TSM pre-estratte.
-            attention_mask:  [B, T_max] bool  — True = frame reale, False = padding.
-                             Non utilizzata internamente (Mamba elabora tutto il tensore),
-                             ma accettata per compatibilità di interfaccia con il
-                             LightningModule. Il masking del padding avviene nella loss.
-
-        Returns:
-            logits: [B, T_max, 3] — logits per le 3 classi (correct, mistake, correction).
         """
         # 1. Proiezione delle feature: [B, T, 2048] → [B, T, d_model]
         x = self.input_proj(features)
 
-        # 2. Backbone Mamba: [B, T, d_model] → [B, T, d_model]
-        #    Mamba è intrinsecamente causale: l'output al timestep t
-        #    dipende solo dagli input ai timestep 0, 1, ..., t.
-        if self.use_checkpointing and self.training:
-            x = torch.utils.checkpoint.checkpoint(self.backbone, x, use_reentrant=False)
-        else:
-            x = self.backbone(x)
+        # 2. Backbone Mamba Layer-by-Layer
+        for layer in self.backbone:
+            if self.use_checkpointing and self.training:
+                # Checkpointing PER SINGOLO LAYER: risparmio VRAM gigantesco
+                x = torch.utils.checkpoint.checkpoint(layer, x, use_reentrant=False)
+            else:
+                x = layer(x)
 
         # 3. Classification head: [B, T, d_model] → [B, T, 3]
         logits = self.cls_head(x)

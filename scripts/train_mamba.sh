@@ -39,22 +39,29 @@ export PYTHONUNBUFFERED=1
 # Riduce la frammentazione della VRAM (consigliato da PyTorch per OOM)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-PYTHONPATH=. python src/training/train_mamba_whole_video.py \
+# Utilizzo Apptainer per isolare l'ambiente (sostituisci mamba_env.sif col nome corretto)
+APPTAINER_IMAGE="mamba_env.sif"
+
+apptainer exec --nv \
+    --bind $(pwd):/workspace \
+    --pwd /workspace \
+    $APPTAINER_IMAGE \
+    python src/training/train_mamba_whole_video.py \
     --processed_dir   data/processed \
-    --batch_size      1 \
-    --num_workers     2 \
-    --accumulate_grad_batches 8 \
+    --batch_size      4 \
+    --num_workers     4 \
+    --accumulate_grad_batches 2 \
     --d_model         512 \
     --n_layers        6 \
     --dropout         0.2 \
-    --max_seq_len     8000 \
+    --max_seq_len     25000 \
     --use_checkpointing \
     --epochs          50 \
     --lr              5e-5 \
     --weight_decay    1e-3 \
     --seed            42 \
     --wandb_project   mistake-detection \
-    --wandb_run_name  "mamba-wholevideo-$SLURM_JOB_ID" \
+    --wandb_run_name  "mamba-ssm-wholevid-$SLURM_JOB_ID" \
     --ckpt_dir        experiments/checkpoints
 
 
