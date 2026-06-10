@@ -1,51 +1,279 @@
-# 🧠 Context Skill: GCluster Environment & Repository Guidelines
+# 🖥️ Context Skill: GCluster — Ambiente, Hardware e Linee Guida
 
-## 1. Ruolo e Obiettivo
+---
 
-Sei un AI Assistant specializzato in Deep Learning, architetture sequenziali avanzate (Mamba, xLSTM, TeSTra) e Computer Vision. Il tuo compito è scrivere codice Python, script Bash e file di configurazione per un progetto di "Mistake Detection".
-Tutto il codice che genererai verrà eseguito all'interno del **GCluster (gcluster.dmi.unict.it)**, un cluster HPC universitario basato su sistema di code **SLURM**.
+## 1. Il Cluster: GCluster (DMI - UniCT)
 
-## 2. Ambiente di Esecuzione (GCluster & SLURM)
+Il progetto gira interamente sul **GCluster**, il cluster HPC del Dipartimento di Matematica e Informatica dell'Università di Catania (gcluster.dmi.unict.it), basato su scheduler **SLURM**.
 
-Devi rispettare rigorosamente le seguenti regole legate all'ambiente di esecuzione:
+- Accesso via SSH: `ssh <codice-fiscale>@gcluster.dmi.unict.it`
+- **Username:** `mssdmn01t05c351v`
+- **Home sul cluster:** `/home/mssdmn01t05c351v/`
+- **Root del progetto:** `/home/mssdmn01t05c351v/assembly-mistake-detection/`
+- Il nodo di login è **solo per sottomettere job**: non eseguire nulla di computazionalmente pesante lì.
+- I job si eseguono sui **nodi di calcolo** tramite `srun` (interattivo) o `sbatch` (batch).
+- ⚠️ Il comando `apptainer` **non è disponibile sul nodo di login**: deve essere eseguito esclusivamente sui nodi di calcolo (via `srun` o dentro un job `sbatch`).
 
-* **Architettura a due livelli per gli script (FONDAMENTALE):**
-  Ogni task (training, estrazione feature, valutazione, ecc.) deve avere **due script separati**:
-  1. **Runner (`scripts/run_<task>.sh`):** Contiene tutta la logica di esecuzione (export delle variabili d'ambiente, chiamata a Python, parametri di default). NON contiene direttive `#SBATCH` né chiamate ad `apptainer`. Può essere eseguito direttamente dentro una sessione interattiva del container (es. tramite l'alias `mamba-docker`). Accetta argomenti extra via `"$@"` per sovrascrivere i default.
-  2. **Wrapper SLURM (`scripts/<task>.sh`):** Contiene solo le direttive `#SBATCH` e la chiamata ad `apptainer exec ... bash /workspace/scripts/run_<task>.sh`. Non duplica la logica del runner.
+### Alias definiti in `~/.bashrc`
 
-  **Esempi di utilizzo:**
-  - **Interattivo:** `mamba-docker` → `cd /path/to/project` → `./scripts/run_train_mamba.sh`
-  - **Batch:** `sbatch scripts/train_mamba.sh` (dal nodo di login)
+```bash
+# Entra in un container interattivo con latest.sif su gnode10 (gpu-xlarge)
+alias apptainer-gpu-xl='srun --account=dl-course-q2 --partition=dl-course-q2 --qos=gpu-xlarge --nodelist=gnode10 --gres=gpu:1 --gres=shard:22000 --mem=32G --pty apptainer shell --nv /shared/sifs/latest.sif'
 
-* **Hardware:** Il codice deve essere "Device Agnostic" ma ottimizzato per GPU. Usa sempre costrutti come `device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')`. Assicurati di svuotare la cache VRAM (`torch.cuda.empty_cache()`) alla fine delle epoche di validazione per evitare Out-Of-Memory.
-* **Logging:** In ambienti SLURM, l'output standard viene reindirizzato su file di testo (`.out`/`.err`). Configura `tqdm` in modo che non crei artefatti visivi nei log di testo (es. usa `mininterval=2.0` o log testuali per le epoche).
-* **Container Apptainer:** L'immagine SIF di riferimento è `mamba_env.sif` situata nella home del cluster. L'alias `mamba-docker` lancia una sessione interattiva con GPU tramite `srun + apptainer shell --nv`.
+# Entra in un container interattivo con mamba_env.sif su gnode10 (gpu-xlarge)
+alias mamba-docker='srun --account=dl-course-q2 --partition=dl-course-q2 --qos=gpu-xlarge --nodelist=gnode10 --gres=gpu:1 --gres=shard:22000 --mem=32G --pty apptainer shell --nv /home/mssdmn01t05c351v/assembly-mistake-detection/mamba_env.sif'
+```
 
-## 3. Librerie e Gestione delle Dipendenze
+---
 
-L'ambiente del progetto è flessibile e costruito per essere modulare e professionale. Le librerie base a disposizione includono: `einops`, `scikit-learn`, `matplotlib`, `seaborn`, `pandas`, `tqdm`, `xlstm`, `mambapy`.
+## 2. Hardware Disponibile
 
-**Regole di Sviluppo (Framework e Tracking):**
+| Nodo    | Categoria | CPU                    | RAM    | GPU                              | bf16 |
+|---------|-----------|------------------------|-------:|----------------------------------|:----:|
+| gnode1  | low-end   | 8 core                 | 32 GB  | 1× Nvidia K80 (22 GB VRAM)       | ✗    |
+| gnode2  | low-end   | 8 core                 | 32 GB  | 1× Nvidia K80 (22 GB VRAM)       | ✗    |
+| gnode3  | low-end   | 8 core                 | 32 GB  | 1× Nvidia K80 (22 GB VRAM)       | ✗    |
+| gnode4  | low-end   | 8 core                 | 32 GB  | 1× Nvidia K80 (22 GB VRAM)       | ✗    |
+| gnode5  | high-end  | 16 core (32 thread)    | 192 GB | 4× Nvidia V100 (16 GiB VRAM cad) | ✗    |
+| **gnode10** | **high-end** | **48 core (96 thread)** | **512 GB** | **4× Nvidia L40S (48 GiB VRAM cad)** | **✓** |
 
-* **PyTorch Lightning:** Sei incoraggiato a utilizzare `pytorch-lightning` (o `lightning`) per strutturare i modelli. Scrivi il codice incapsulando la logica in `LightningModule` e utilizza il `Trainer` per gestire i loop di addestramento, la validazione e l'hardware (GPU) in modo pulito.
-* **Weights & Biases (wandb):** Utilizza sempre `wandb` tramite il `WandbLogger` di Lightning per tracciare le metriche, le loss e i parametri degli esperimenti in tempo reale.
+> **Nodo di riferimento del progetto: `gnode10`** — L40S con bf16 nativo, usato per **tutti** i training con `--nodelist=gnode10`.
 
-* **Nuove Librerie:** Se per implementare una soluzione ottimale ritieni necessaria una libreria esterna non attualmente in uso, sentiti libero di importarla e utilizzarla. Assicurati solo di segnalare all'utente (nei commenti o nel testo) che il pacchetto richiederà l'installazione tramite `pip install` o `conda install` nell'ambiente del cluster.
+---
 
-## 4. Gestione della Repository e Percorsi (Paths)
+## 3. Autorizzazioni, Account e QoS
 
-L'esecuzione degli script avverrà sempre dalla root principale del progetto.
+- **Account/Partition assegnata:** `dl-course-q2`
+- Per scoprire le autorizzazioni attive: `sacctmgr show associations user=$USER format=Account,Partition,QOS,DefaultQOS -P`
 
-* **Importazioni:** Usa sempre percorsi assoluti basati sulla root del progetto. Esempio corretto: `from src.models.baseline import TempAggMistakeDetector`. Esempio errato: `from ..models.baseline import ...`
-* **Lettura/Scrittura File:** Usa la libreria `os` o `pathlib` e fai sempre riferimento alle cartelle strutturali.
-  * I dataset/LMDB si trovano dentro la cartella `data/`.
-  * I modelli salvati devono andare in `experiments/checkpoints/`.
-  * I log delle metriche in `experiments/logs/`.
-* **Configurazioni:** Favorisci l'uso di script Python (es. `argparse`) o dizionari semplici per configurare gli esperimenti in `experiments/configs/`.
+### Tabella QoS disponibili
 
-## 5. Standard di Scrittura del Codice
+| QoS Name       | CPU | RAM       | GPU VRAM  | Tempo Massimo |
+|----------------|----:|----------:|----------:|--------------:|
+| `gpu-small`    | 1   | 4096 MB   | 2816 MB   | 4 ore         |
+| `gpu-medium`   | 2   | 8192 MB   | 5632 MB   | 6 ore         |
+| `gpu-large`    | 4   | 16384 MB  | 11264 MB  | 12 ore        |
+| `gpu-xlarge`   | 8   | 49152 MB  | 22528 MB  | 12 ore        |
+| `gpu-phd-large`| 4   | 40960 MB  | 16384 MB  | 12 ore        |
 
-* **Modularità:** Non scrivere file monolitici. Se stai scrivendo il training loop, richiama il modello da `src/models/` e il dataloader da `src/datasets/`.
-* **Riproducibilità:** Includi sempre seed fissi per `torch`, `numpy` e `random` all'inizio degli script di training.
-* **Efficienza:** Poiché utilizziamo Mamba e xLSTM, assicurati che la logica di batching e padding sia gestita correttamente, mantenendo i tensori contigui in memoria (`.contiguous()`) quando richiesto da queste specifiche architetture.
+> **QoS usata di default per tutti i task:** `gpu-xlarge` (8 CPU, 32 GB RAM, 22 GB VRAM).
+> Usa QoS più basse per job veloci/debug: ottieni priorità più alta in coda.
+
+---
+
+## 4. Immagini Apptainer (Container SIF)
+
+Il cluster usa **Apptainer** (non Docker) per isolare gli ambienti. Le immagini SIF sono nelle posizioni indicate.
+
+### Immagine 1: `latest.sif` — Uso Generale
+
+- **Path:** `/shared/sifs/latest.sif` (link simbolico all'immagine più recente)
+- **Usata per:** baseline, xLSTM, TeSTra, mambapy, feature extraction, e qualsiasi modello **che NON usa mamba-ssm**
+- **Librerie extra installate** (via `pip install --user`):
+  - `einops`, `scikit-learn`, `matplotlib`, `seaborn`, `pandas`, `tqdm`, `xlstm`, `mambapy`
+  - `lightning`, `wandb`
+
+### Immagine 2: `mamba_env.sif` — Mamba SSM
+
+- **Path:** `/home/mssdmn01t05c351v/assembly-mistake-detection/mamba_env.sif`
+- **Usata OBBLIGATORIAMENTE per:** qualsiasi codice che importa `mamba_ssm` (la libreria ufficiale Mamba)
+- **Librerie chiave:** `mamba-ssm`, `causal-conv1d`, `lightning`, `wandb`
+- **Alias interattivo:** `mamba-docker` (lancia `srun + apptainer shell --nv mamba_env.sif` su gnode10)
+
+> ⚠️ **Regola tassativa:** Se il codice fa `from mamba_ssm import ...` → usa **`mamba_env.sif`**.
+> Tutti gli altri modelli → usa **`latest.sif`** (immagine di default del cluster).
+
+> ⚠️ **Attenzione alle librerie:** Non tutte le librerie possono essere installate nel cluster.
+> Verifica sempre la compatibilità prima di aggiungere nuove dipendenze.
+
+---
+
+## 5. Architettura degli Script (FONDAMENTALE)
+
+Ogni task (training, estrazione feature, valutazione, ecc.) deve avere **due script separati**:
+
+### Script 1 — Runner: `scripts/run_<task>.sh`
+- Contiene tutta la logica: `export` delle variabili d'ambiente, chiamata Python, parametri di default
+- **NON** contiene direttive `#SBATCH` né chiamate ad `apptainer`
+- Eseguibile **direttamente dentro il container** (interattivo via alias o `apptainer shell`)
+- Accetta argomenti extra via `"$@"` per sovrascrivere i default a runtime
+
+### Script 2 — Wrapper SLURM: `scripts/<task>.sh`
+- Contiene solo le direttive `#SBATCH` e la chiamata `apptainer exec ... bash /workspace/scripts/run_<task>.sh`
+- Non duplica la logica del runner — la delega sempre al runner
+
+### Esempi d'uso
+
+```bash
+# ── Modalità interattiva (mamba_env.sif) ────────────────────────────
+mamba-docker                          # entra nel container su gnode10
+cd /home/mssdmn01t05c351v/assembly-mistake-detection
+./scripts/run_train_mamba.sh          # lancia il training direttamente
+./scripts/run_train_mamba.sh --batch_size 8 --lr 1e-4   # con override
+
+# ── Modalità interattiva (latest.sif) ───────────────────────────────
+apptainer-gpu-xl                      # entra nel container su gnode10
+cd /home/mssdmn01t05c351v/assembly-mistake-detection
+./scripts/run_train_xlstm.sh          # lancia il training xLSTM
+
+# ── Modalità batch (sbatch) ─────────────────────────────────────────
+sbatch scripts/train_mamba.sh         # sottomette il job SLURM
+squeue --me                           # controlla lo stato del job
+tail -f experiments/logs/mamba_<JOB_ID>.out   # segui l'output
+```
+
+### Template Wrapper SLURM (mamba_env.sif)
+```bash
+#!/bin/bash
+#SBATCH --job-name=<job_name>
+#SBATCH --output=experiments/logs/<job_name>_%j.out
+#SBATCH --error=experiments/logs/<job_name>_%j.err
+#SBATCH --account=dl-course-q2
+#SBATCH --partition=dl-course-q2
+#SBATCH --qos=gpu-xlarge
+#SBATCH --nodelist=gnode10
+#SBATCH --gres=gpu:1
+#SBATCH --gres=shard:22000
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=12:00:00
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=<tua-email>
+
+mkdir -p experiments/logs experiments/checkpoints
+
+apptainer exec --nv \
+    --bind $(pwd):/workspace \
+    --pwd /workspace \
+    /home/mssdmn01t05c351v/assembly-mistake-detection/mamba_env.sif \
+    bash /workspace/scripts/run_<task>.sh
+```
+
+### Template Wrapper SLURM (latest.sif)
+```bash
+#!/bin/bash
+#SBATCH --job-name=<job_name>
+#SBATCH --output=experiments/logs/<job_name>_%j.out
+#SBATCH --error=experiments/logs/<job_name>_%j.err
+#SBATCH --account=dl-course-q2
+#SBATCH --partition=dl-course-q2
+#SBATCH --qos=gpu-xlarge
+#SBATCH --nodelist=gnode10
+#SBATCH --gres=gpu:1
+#SBATCH --gres=shard:22000
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=12:00:00
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=<tua-email>
+
+mkdir -p experiments/logs experiments/checkpoints
+
+apptainer exec --nv \
+    --bind $(pwd):/workspace \
+    --pwd /workspace \
+    /shared/sifs/latest.sif \
+    bash /workspace/scripts/run_<task>.sh
+```
+
+---
+
+## 6. Variabili d'Ambiente nei Runner Script
+
+Da includere sempre nei runner:
+
+```bash
+export WANDB_MODE=offline          # wandb non ha accesso a internet dal cluster
+export PYTHONUNBUFFERED=1          # stdout non bufferizzato nei log SLURM
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # riduce OOM VRAM
+```
+
+> ⚠️ **Non usare `PYTHONNOUSERSITE=1`**: blocca Python dal trovare i pacchetti installati
+> con `pip install --user` in `~/.local/` (es. `lightning`, `xlstm`, `mambapy`).
+
+---
+
+## 7. Gestione delle Dipendenze
+
+### Librerie disponibili per immagine
+
+| Libreria         | `latest.sif` | `mamba_env.sif` |
+|------------------|:------------:|:---------------:|
+| PyTorch          | ✓            | ✓               |
+| `lightning`      | ✓ (user)     | ✓ (user)        |
+| `wandb`          | ✓ (user)     | ✓ (user)        |
+| `einops`         | ✓ (user)     | ✓               |
+| `scikit-learn`   | ✓ (user)     | ✓               |
+| `matplotlib`     | ✓ (user)     | ✓               |
+| `pandas`         | ✓ (user)     | ✓               |
+| `tqdm`           | ✓ (user)     | ✓               |
+| `xlstm`          | ✓ (user)     | —               |
+| `mambapy`        | ✓ (user)     | —               |
+| `mamba-ssm`      | ✗            | ✓               |
+| `causal-conv1d`  | ✗            | ✓               |
+
+> `(user)` = installata via `pip install --user`, disponibile in `~/.local/`
+
+### Installare nuove librerie
+```bash
+# Dentro il container (interattivo):
+pip install --user <pacchetto>
+# I pacchetti installati persistono in ~/.local/ tra le sessioni.
+# ⚠️ Non tutte le librerie possono essere installate nel cluster.
+```
+
+---
+
+## 8. Regole di Codice e Repository
+
+### Paths
+- Scripts eseguiti **sempre dalla root del progetto** (`/home/mssdmn01t05c351v/assembly-mistake-detection/`)
+- Import assoluti: `from src.models.mamba_model import ...` ✓ — mai relativi `..` ✗
+- Dataset/LMDB: `data/`
+- Checkpoint: `experiments/checkpoints/`
+- Log metriche: `experiments/logs/`
+
+### Hardware & GPU
+- Sempre device-agnostic: `device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')`
+- `torch.set_float32_matmul_precision("high")` all'inizio del training (sfrutta bf16 di L40S)
+- `torch.cuda.empty_cache()` alla fine della validation per evitare OOM
+
+### Logging in SLURM
+- L'output va su file `.out`/`.err` — no progress bar visive
+- `tqdm` con `mininterval=2.0` oppure log testuali per le epoche
+
+### Framework
+- **PyTorch Lightning** (`import lightning as L`) per strutturare training/validation
+- **Weights & Biases** via `WandbLogger` — sempre `WANDB_MODE=offline` sul cluster
+
+### Codice
+- Modularità: modelli in `src/models/`, dataloader in `src/datasets/`, training in `src/training/`
+- Seed fissi per riproducibilità: `torch`, `numpy`, `random`
+- Tensori contigui per Mamba/xLSTM: `.contiguous()` dove richiesto
+
+---
+
+## 9. Comandi SLURM Utili
+
+```bash
+# Stato dei job personali
+squeue --me
+
+# Dettagli su un job (incluso il campo Reason se PENDING)
+scontrol show job <JOB_ID>
+
+# Cancella un job
+scancel <JOB_ID>
+
+# Risorse usate da un job in esecuzione
+sstat -aPno TresUsageInMax -j <JOB_ID>
+
+# Storico job
+sacct -u $USER --format=JobID,JobName,State,ExitCode,Elapsed,Start,End
+
+# Segui l'output in real-time
+tail -f experiments/logs/<job_name>_<JOB_ID>.out
+
+# Ispeziona GPU di un job in esecuzione (senza SSH sul nodo)
+srun --jobid=<JOB_ID> --overlap nvidia-smi
+```
