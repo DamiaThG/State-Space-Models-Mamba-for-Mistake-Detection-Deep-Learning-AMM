@@ -1,21 +1,17 @@
-FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel
+FROM pytorch/pytorch:2.4.0-cuda12.4-cudnn9-devel
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LC_ALL=C
-
-# Forziamo la compilazione per le GPU del cluster. 
-# 7.5 (T4), 8.0 (A100), 8.6 (RTX 3090/A40) e 8.9 (RTX 4090/L40) coprono quasi tutti i cluster moderni.
-ENV TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.9"
 
 RUN apt-get update && apt-get install -y git wget build-essential && rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --upgrade pip
 RUN pip install packaging ninja
 
-RUN pip install --no-cache-dir --no-binary :all: --no-build-isolation mamba-ssm[causal-conv1d]
+# Installiamo tutte le librerie bloccando PyTorch alla 2.4.0 per evitare aggiornamenti a sorpresa
+RUN pip install lightning wandb einops scikit-learn matplotlib seaborn pandas tqdm xlstm torchvision "torch==2.4.0" "transformers==4.37.2"
 
-# RUN pip install causal-conv1d>=1.4.0 --no-build-isolation
-# RUN pip install mamba-ssm --no-build-isolation
-
-RUN pip install lightning wandb einops scikit-learn matplotlib seaborn pandas tqdm xlstm
-RUN pip install torchvision --no-deps
+# Installiamo i binari PRE-COMPILATI di causal-conv1d e mamba-ssm 
+# (specifici per PyTorch 2.4, CUDA 12 e Python 3.11, con ABI=FALSE come richiesto dall'immagine base)
+RUN pip install https://github.com/Dao-AILab/causal-conv1d/releases/download/v1.5.3.post1/causal_conv1d-1.5.3.post1%2Bcu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
+RUN pip install https://github.com/state-spaces/mamba/releases/download/v2.2.6.post2/mamba_ssm-2.2.6.post2%2Bcu12torch2.4cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
