@@ -49,9 +49,6 @@ from lightning.pytorch.callbacks import (
 )
 from torchmetrics import Precision, Recall
 
-# Importazioni dalla root del progetto (eseguire sempre dalla root)
-from src.models.baseline import TempAggMistakeDetector
-from src.models.mamba_model import MambaMistakeDetector
 from src.datasets.dataloader import build_split_dataloaders
 
 
@@ -114,6 +111,7 @@ def build_model(args: argparse.Namespace) -> nn.Module:
         nn.Module con interfaccia forward(features, attention_mask) → logits.
     """
     if args.model == "tempagg":
+        from src.models.baseline import TempAggMistakeDetector
         return TempAggMistakeDetector(
             input_dim=2048,
             hidden_dim=args.hidden_dim,
@@ -123,6 +121,7 @@ def build_model(args: argparse.Namespace) -> nn.Module:
             dropout=args.dropout,
         )
     elif args.model == "mamba":
+        from src.models.mamba_model import MambaMistakeDetector
         return MambaMistakeDetector(
             input_dim=2048,
             d_model=args.d_model,
