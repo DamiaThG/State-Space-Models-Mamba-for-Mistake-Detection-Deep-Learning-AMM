@@ -32,6 +32,8 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=1e-3, help="Weight decay for AdamW")
+    parser.add_argument("--focal_gamma", type=float, default=2.0,
+                        help="Esponente Focal Loss (gamma=0 → CrossEntropyLoss pesata standard)")
     
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--wandb_project", type=str, default="mistake-detection", help="W&B project name")
@@ -86,6 +88,7 @@ def main():
         model=model,
         lr=args.lr,
         weight_decay=args.weight_decay,
+        focal_gamma=args.focal_gamma,
     )
     
     # 5. Callbacks & Logger

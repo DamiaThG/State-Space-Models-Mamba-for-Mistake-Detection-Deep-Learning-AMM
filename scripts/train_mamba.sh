@@ -46,7 +46,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ---------- Parametri training ----------
 TRAIN_CMD=(
-    python src/training/train_mamba_whole_video.py
+    python src/training/train_mamba.py
         --processed_dir   data/processed
         --batch_size      4
         --num_workers     4

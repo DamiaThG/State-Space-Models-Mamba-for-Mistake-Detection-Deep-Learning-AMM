@@ -48,7 +48,7 @@ export CUDA_HOME=/opt/conda
 
 # ---------- Parametri training ----------
 TRAIN_CMD=(
-    python src/training/train_xlstm_whole_video.py
+    python src/training/train_xlstm.py
         --processed_dir   data/processed
         --batch_size      4
         --num_workers     4

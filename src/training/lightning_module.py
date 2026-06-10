@@ -3,6 +3,7 @@ Lightning Module — Mistake Detection (condiviso tra tutti i modelli)
 =====================================================================
 Questo modulo contiene SOLO la logica di training condivisa:
   - compute_class_weights()
+  - FocalLoss
   - MistakeDetectionLightningModule
 
 Non importa nessun modello specifico (zero dipendenze da mamba_ssm, xlstm, ecc.)
@@ -11,6 +12,7 @@ Ogni script di training dedicato importa da qui ciò che gli serve.
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import lightning as L
 from typing import Dict, Optional, Tuple
 from torchmetrics import Precision, Recall
@@ -51,6 +53,91 @@ def compute_class_weights(
 
 
 # ---------------------------------------------------------------------------
+# Focal Loss (class-weighted, con ignore_index)
+# ---------------------------------------------------------------------------
+
+class FocalLoss(nn.Module):
+    """
+    Focal Loss per classificazione multi-classe sbilanciata.
+
+    Formula:  FL(p_t) = -alpha_t * (1 - p_t)^gamma * log(p_t)
+
+    Rispetto alla CrossEntropyLoss pesata standard:
+      - Quando il modello è molto "sicuro" sulla classe corretta (p_t → 1),
+        il fattore (1-p_t)^gamma → 0: la loss si annulla per gli esempi facili.
+      - Quando il modello sbaglia (p_t → 0), il fattore → 1: la loss resta inalterata.
+
+    Effetto pratico: i gradienti vengono concentrati sulle classi rare/difficili
+    (mistake, correction) anziché essere dominati dai frame 'correct' facili.
+
+    Args:
+        weight:       pesi per classe [C], come in CrossEntropyLoss.
+        gamma:        esponente di focalizzazione (default=2.0).
+                      gamma=0 → equivalente alla CrossEntropyLoss pesata.
+        ignore_index: indice da ignorare nel calcolo della loss (padding).
+        reduction:    'mean' | 'sum' | 'none'.
+    """
+
+    def __init__(
+        self,
+        weight: Optional[torch.Tensor] = None,
+        gamma: float = 2.0,
+        ignore_index: int = -100,
+        reduction: str = "mean",
+    ) -> None:
+        super().__init__()
+        self.gamma = gamma
+        self.ignore_index = ignore_index
+        self.reduction = reduction
+        # Registriamo i pesi come buffer (si spostano automaticamente su GPU)
+        if weight is not None:
+            self.register_buffer("weight", weight)
+        else:
+            self.weight = None
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            logits:  [N, C]  logits grezzi (pre-softmax).
+            targets: [N]     indici di classe.
+        """
+        # Maschera dei token validi (esclude ignore_index)
+        valid_mask = targets != self.ignore_index
+        if not valid_mask.any():
+            return logits.sum() * 0.0  # nessun token valido, loss = 0
+
+        logits_valid  = logits[valid_mask]    # [N_valid, C]
+        targets_valid = targets[valid_mask]   # [N_valid]
+
+        # Log-probabilità e probabilità della classe corretta
+        log_probs = F.log_softmax(logits_valid, dim=-1)             # [N_valid, C]
+        probs     = log_probs.exp()                                 # [N_valid, C]
+
+        # Seleziona p_t e log(p_t) per la classe target
+        targets_one_hot = F.one_hot(targets_valid, num_classes=logits_valid.shape[-1])  # [N_valid, C]
+        p_t     = (probs * targets_one_hot).sum(dim=-1)             # [N_valid]
+        log_p_t = (log_probs * targets_one_hot).sum(dim=-1)         # [N_valid]
+
+        # Focal modulation: (1 - p_t)^gamma
+        focal_weight = (1.0 - p_t) ** self.gamma                    # [N_valid]
+
+        # Class weights (alpha_t)
+        if self.weight is not None:
+            alpha_t = self.weight[targets_valid]                     # [N_valid]
+        else:
+            alpha_t = 1.0
+
+        # Loss per-sample: -alpha_t * (1-p_t)^gamma * log(p_t)
+        loss = -alpha_t * focal_weight * log_p_t                    # [N_valid]
+
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        return loss
+
+
+# ---------------------------------------------------------------------------
 # LightningModule (generico, model-agnostic)
 # ---------------------------------------------------------------------------
 
@@ -61,7 +148,7 @@ class MistakeDetectionLightningModule(L.LightningModule):
 
     Gestisce:
       - Forward pass con attention_mask
-      - CrossEntropyLoss con class weighting e ignore_index=-1
+      - FocalLoss (default, gamma=2.0) o CrossEntropyLoss (gamma=0) con class weighting
       - Masking del padding prima del calcolo della loss
       - Precision e Recall per classe (torchmetrics)
       - Logging su WandB
@@ -76,6 +163,7 @@ class MistakeDetectionLightningModule(L.LightningModule):
         weight_decay:    float = 1e-5,
         warmup_steps:    int   = 500,
         # Loss
+        focal_gamma:     float = 2.0,
         correct_frac:    float = 0.774,
         mistake_frac:    float = 0.159,
         correction_frac: float = 0.067,
@@ -91,13 +179,20 @@ class MistakeDetectionLightningModule(L.LightningModule):
         class_weights = compute_class_weights(
             correct_frac, mistake_frac, correction_frac
         )
-        self.criterion = nn.CrossEntropyLoss(
-            weight       = class_weights,
-            ignore_index = -1,    # ignora il padding
-            reduction    = "mean",
-            # NB: label_smoothing RIMOSSO — redistribuisce massa probabilistica
-            # uniformemente, contraddicendo i class weights con classe dominante al 77%.
-        )
+        if focal_gamma > 0:
+            self.criterion = FocalLoss(
+                weight       = class_weights,
+                gamma        = focal_gamma,
+                ignore_index = -1,
+                reduction    = "mean",
+            )
+        else:
+            # gamma=0 → Focal Loss degenera in CrossEntropyLoss pesata
+            self.criterion = nn.CrossEntropyLoss(
+                weight       = class_weights,
+                ignore_index = -1,
+                reduction    = "mean",
+            )
 
         # ── Metriche (per classe 1=mistake, 2=correction) ──────────────────
         metric_kwargs = dict(

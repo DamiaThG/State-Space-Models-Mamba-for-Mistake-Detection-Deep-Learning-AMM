@@ -11,7 +11,7 @@ Il modello deve essere confrontabile con Mamba SSM (già implementato) e con la 
 L'infrastruttura di training, evaluation e dataloader è **già costruita e funzionante**.
 Il tuo compito è:
 1. Creare il modello `xLSTMMistakeDetector` in `src/models/xlstm_model.py`
-2. Creare lo script di training dedicato `src/training/train_xlstm_whole_video.py`
+2. Creare lo script di training dedicato `src/training/train_xlstm.py`
 3. Creare i runner/wrapper SLURM in `scripts/`
 
 ---
@@ -156,9 +156,9 @@ Gestisce già: loss pesata per classe, metriche per classe (precision/recall/F1)
 
 ## 6. Training Script
 
-### File da creare: `src/training/train_xlstm_whole_video.py`
+### File da creare: `src/training/train_xlstm.py`
 
-Modellato su `src/training/train_mamba_whole_video.py`, con queste differenze:
+Modellato su `src/training/train_mamba.py`, con queste differenze:
 - Importa `xLSTMMistakeDetector` invece di `MambaMistakeDetector`
 - Usa `build_whole_video_dataloaders`
 - Usa il `MistakeDetectionLightningModule` esistente (riutilizzato — **non** duplicarlo)
@@ -166,7 +166,7 @@ Modellato su `src/training/train_mamba_whole_video.py`, con queste differenze:
 
 ```bash
 # Uso tipico (interattivo dentro apptainer-gpu-xl):
-python src/training/train_xlstm_whole_video.py \
+python src/training/train_xlstm.py \
     --processed_dir   data/processed \
     --batch_size      4 \
     --num_workers     4 \
@@ -214,4 +214,4 @@ python src/training/train_xlstm_whole_video.py \
 | Workaround torchvision  | ✓ (necessario)                       | ✗ (non necessario in `latest.sif`)          |
 | Script runner           | `run_train_mamba.sh`                 | `run_train_xlstm.sh`                        |
 | Script SLURM            | `train_mamba.sh`                     | `train_xlstm.sh`                            |
-| Training entry          | `train_mamba_whole_video.py`         | `train_xlstm_whole_video.py`                |
+| Training entry          | `train_mamba.py`         | `train_xlstm.py`                |
