@@ -24,6 +24,8 @@ mkdir -p experiments/checkpoints
 # ---------- Environment ----------
 export WANDB_MODE=offline
 export PYTHONUNBUFFERED=1
+# Fix per il JIT compiler di xLSTM che non trova i percorsi CUDA
+export CUDA_HOME=/usr/local/cuda
 # Riduce la frammentazione della VRAM (consigliato da PyTorch per OOM)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
