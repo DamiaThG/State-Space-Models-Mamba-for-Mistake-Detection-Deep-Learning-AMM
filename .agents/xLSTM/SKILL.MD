@@ -63,8 +63,8 @@ backbone = xLSTMBlockStack(cfg)
 
 ```
 Input [B, T_max, 2048]
-    → InputProjection   (Linear 2048 → d_model, LayerNorm, GELU, Dropout)
-    → xLSTM Backbone    (xLSTMBlockStack — n_layers blocchi mLSTM puri)
+    → InputProjection    (Linear 2048 → d_model, LayerNorm, GELU, Dropout)
+    → xLSTM Backbone     (xLSTMBlockStack — n_layers blocchi mLSTM puri)
     → ClassificationHead (LayerNorm → Linear d_model → 3)
     → Output [B, T_max, 3]
 ```
@@ -82,17 +82,30 @@ if attention_mask is not None:
 ```
 
 ### Parametri Default
-| Parametro | Valore | Note |
-|-----------|--------|------|
-| `input_dim` | 2048 | Feature TSM |
-| `d_model` | 512 | Allineato con Mamba per confronto fair |
-| `n_layers` | 6 | Blocchi mLSTM |
-| `num_classes` | 3 | correct / mistake / correction |
-| `dropout` | 0.2 | |
-| `max_seq_len` | 25000 | Troncamento sequenze lunghe |
+
+| Parametro    | Valore | Note                                   |
+|--------------|--------|----------------------------------------|
+| `input_dim`  | 2048   | Feature TSM                            |
+| `d_model`    | 512    | Allineato con Mamba per confronto fair |
+| `n_layers`   | 6      | Blocchi mLSTM                          |
+| `num_classes`| 3      | correct / mistake / correction         |
+| `dropout`    | 0.2    |                                        |
+| `max_seq_len`| 25000  | Troncamento sequenze lunghe            |
 
 > ⚠️ Potrebbero emergere problemi di memoria con `d_model=512` e sequenze di 25k frame.
 > In caso, ridurre `max_seq_len` o `batch_size` durante il training.
+
+### Firma obbligatoria del modello
+
+```python
+class xLSTMMistakeDetector(nn.Module):
+    def forward(
+        self,
+        features: torch.Tensor,                          # [B, T, 2048]
+        attention_mask: Optional[torch.Tensor] = None,   # [B, T] bool
+    ) -> torch.Tensor:                                   # [B, T, 3]
+        ...
+```
 
 ---
 
@@ -138,18 +151,6 @@ Accetta qualsiasi `nn.Module` con la firma:
 model.forward(features: Tensor, attention_mask: Optional[Tensor]) -> logits: Tensor
 ```
 Gestisce già: loss pesata per classe, metriche per classe (precision/recall/F1), warmup + cosine LR schedule, WandB.
-
-### Firma obbligatoria del modello
-
-```python
-class xLSTMMistakeDetector(nn.Module):
-    def forward(
-        self,
-        features: torch.Tensor,           # [B, T, 2048]
-        attention_mask: Optional[torch.Tensor] = None,  # [B, T] bool
-    ) -> torch.Tensor:                    # [B, T, 3]
-        ...
-```
 
 ---
 
@@ -202,15 +203,15 @@ python src/training/train_xlstm_whole_video.py \
 
 ## 8. Confronto con Mamba
 
-| Aspetto | Mamba (SSM) | xLSTM (mLSTM puro) |
-|---------|------------|---------------------|
-| Container SIF | `mamba_env.sif` | `latest.sif` |
-| Libreria chiave | `mamba-ssm` | `xlstm` |
-| Alias interattivo | `mamba-docker` | `apptainer-gpu-xl` |
-| Input projection | Linear → LayerNorm → GELU → Dropout | idem |
-| Backbone | `n` blocchi `MambaBlock` (pre-LN + residual) | `xLSTMBlockStack` (mLSTM puro, `slstm_at=[]`) |
-| Mask handling | zero-out features | zero-out features |
-| Workaround torchvision | ✓ (necessario) | ✗ (non necessario) |
-| Script runner | `run_train_mamba.sh` | `run_train_xlstm.sh` |
-| Script SLURM | `train_mamba.sh` | `train_xlstm.sh` |
-| Training entry | `train_mamba_whole_video.py` | `train_xlstm_whole_video.py` |
+| Aspetto                 | Mamba (SSM)                          | xLSTM (mLSTM puro)                         |
+|-------------------------|--------------------------------------|---------------------------------------------|
+| Container SIF           | `mamba_env.sif`                      | `latest.sif`                                |
+| Libreria chiave         | `mamba-ssm`                          | `xlstm`                                     |
+| Alias interattivo       | `mamba-docker`                       | `apptainer-gpu-xl`                          |
+| Input projection        | Linear → LayerNorm → GELU → Dropout  | idem                                        |
+| Backbone                | `n` blocchi `MambaBlock`             | `xLSTMBlockStack` (mLSTM puro, `slstm_at=[]`) |
+| Mask handling           | zero-out features                    | zero-out features                           |
+| Workaround torchvision  | ✓ (necessario)                       | ✗ (non necessario in `latest.sif`)          |
+| Script runner           | `run_train_mamba.sh`                 | `run_train_xlstm.sh`                        |
+| Script SLURM            | `train_mamba.sh`                     | `train_xlstm.sh`                            |
+| Training entry          | `train_mamba_whole_video.py`         | `train_xlstm_whole_video.py`                |
