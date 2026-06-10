@@ -123,6 +123,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    
+    if args.max_seq_len is not None and args.max_seq_len <= 0:
+        args.max_seq_len = None
 
     # ── Configurazione Logging ─────────────────────────────────────────────
     log_dir = Path("experiments/logs")
