@@ -1,13 +1,19 @@
 import os
 import argparse
 import datetime
+import random
+import sys
+import logging
+from pathlib import Path
+
 import torch
 import lightning as L
-from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 from lightning.pytorch.loggers import WandbLogger
+import wandb
 
 from src.datasets.dataloader import build_whole_video_dataloaders
-from src.training.training_loop import MistakeDetectionLightningModule
+from src.training.lightning_module import MistakeDetectionLightningModule
 from src.models.xlstm_model import xLSTMMistakeDetector
 
 def parse_args():
@@ -78,10 +84,8 @@ def main():
     
     lightning_module = MistakeDetectionLightningModule(
         model=model,
-        learning_rate=args.lr,
+        lr=args.lr,
         weight_decay=args.weight_decay,
-        total_steps=total_steps,
-        num_classes=3
     )
     
     # 5. Callbacks & Logger
@@ -96,7 +100,13 @@ def main():
         save_last=True
     )
     
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
+    early_stop = EarlyStopping(
+        monitor   = "val/loss",
+        mode      = "min",
+        patience  = 15,
+        min_delta = 0.001,
+    )
     
     wandb_logger = WandbLogger(
         project=args.wandb_project,
@@ -114,7 +124,7 @@ def main():
         accelerator="gpu" if device_str == "cuda" else "cpu",
         devices=1,
         logger=wandb_logger,
-        callbacks=[checkpoint_callback, lr_monitor],
+        callbacks=[checkpoint_callback, lr_monitor, early_stop],
         accumulate_grad_batches=args.accumulate_grad_batches,
         precision="16-mixed" if device_str == "cuda" else "32-true",
         gradient_clip_val=1.0,
