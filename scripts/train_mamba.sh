@@ -59,7 +59,7 @@ TRAIN_CMD=(
         --epochs          50
         --lr              2e-5
         --weight_decay    1e-2
-        --focal_gamma     1.0
+        --focal_gamma     2.0
         --class_weight_exp 1.0
         --seed            42
         --wandb_project   mistake-detection
