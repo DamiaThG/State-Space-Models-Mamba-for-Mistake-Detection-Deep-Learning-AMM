@@ -112,8 +112,14 @@ class MetricsCallback(L.Callback):
         logging.info(sep)
 
     def on_train_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        if trainer.sanity_checking:
+            return
+
         metrics = trainer.callback_metrics
-        train_loss = float(metrics.get("train/loss_epoch", float("nan")))
+        epoch   = trainer.current_epoch
+
+        # 1. Recupera train_loss e lr dell'epoca corrente
+        train_loss = float(metrics.get("train/loss_epoch", metrics.get("train/loss", float("nan"))))
         self.train_losses.append(train_loss)
 
         try:
@@ -122,14 +128,8 @@ class MetricsCallback(L.Callback):
             lr = float("nan")
         self.learning_rates.append(lr)
 
-    def on_validation_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
-        # Salta il sanity check iniziale
-        if trainer.sanity_checking:
-            return
-
-        metrics   = trainer.callback_metrics
-        epoch     = trainer.current_epoch
-        val_loss  = float(metrics.get("val/loss", float("nan")))
+        # 2. Recupera metriche val dell'epoca corrente
+        val_loss = float(metrics.get("val/loss", float("nan")))
         self.val_losses.append(val_loss)
 
         prec = [float(metrics.get(f"val/precision_{c}", float("nan"))) for c in self.CLASS_NAMES]
@@ -140,9 +140,7 @@ class MetricsCallback(L.Callback):
         self.val_rec.append(rec)
         self.val_f1.append(f1)
 
-        train_loss = self.train_losses[-1] if self.train_losses else float("nan")
-        lr         = self.learning_rates[-1] if self.learning_rates else float("nan")
-
+        # 3. Stampa log su file/console
         logging.info(
             f"Epoch {epoch:3d} | "
             f"train_loss: {train_loss:.4f} | val_loss: {val_loss:.4f} | "
@@ -150,6 +148,10 @@ class MetricsCallback(L.Callback):
             f"correction → P:{prec[2]:.3f} R:{rec[2]:.3f} F1:{f1[2]:.3f} | "
             f"lr: {lr:.2e}"
         )
+
+    def on_validation_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        # No-op per evitare logging anticipato o disallineato (tutto delegato a on_train_epoch_end)
+        pass
 
     def on_fit_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         sep = "=" * 64
@@ -202,6 +204,19 @@ class MetricsCallback(L.Callback):
         for k in sorted(metrics.keys()):
             if k.startswith("test/"):
                 logging.info(f"  {k}: {float(metrics[k]):.4f}")
+        
+        # Calcola e logga le metriche per classe aggregando le predizioni test raccolte
+        if self.test_preds and self.test_labels:
+            all_preds  = torch.cat(self.test_preds).numpy()
+            all_labels = torch.cat(self.test_labels).numpy()
+            from sklearn.metrics import precision_recall_fscore_support
+            prec, rec, f1, _ = precision_recall_fscore_support(
+                all_labels, all_preds, labels=[0, 1, 2], zero_division=0
+            )
+            for i, name in enumerate(self.CLASS_NAMES):
+                logging.info(
+                    f"  test/{name:<10} → P:{prec[i]:.4f} R:{rec[i]:.4f} F1:{f1[i]:.4f}"
+                )
         logging.info(sep)
 
     def on_test_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
