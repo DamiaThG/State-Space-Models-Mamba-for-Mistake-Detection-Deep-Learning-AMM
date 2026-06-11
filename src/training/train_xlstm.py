@@ -36,6 +36,8 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=1e-3, help="Weight decay for AdamW")
     parser.add_argument("--focal_gamma", type=float, default=2.0,
                         help="Esponente Focal Loss (gamma=0 → CrossEntropyLoss pesata standard)")
+    parser.add_argument("--class_weight_exp", type=float, default=1.5,
+                        help="Esponente per attenuare o accentuare i pesi delle classi")
     
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--wandb_project", type=str, default="mistake-detection", help="W&B project name")
@@ -105,6 +107,7 @@ def main():
         lr=args.lr,
         weight_decay=args.weight_decay,
         focal_gamma=args.focal_gamma,
+        class_weight_exp=args.class_weight_exp,
     )
     
     # 5. Callbacks & Logger

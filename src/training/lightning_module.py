@@ -30,6 +30,7 @@ def compute_class_weights(
     correct_frac:    float = 0.774,
     mistake_frac:    float = 0.159,
     correction_frac: float = 0.067,
+    exponent:        float = 1.5,
 ) -> torch.Tensor:
     """
     Restituisce un tensore di pesi [3] per CrossEntropyLoss.
@@ -45,8 +46,8 @@ def compute_class_weights(
         1.0 / mistake_frac,
         1.0 / correction_frac,
     ])
-    # Potenza 1.5: tra lineare (1.0) e quadratica (2.0)
-    weights = inv ** 1.5
+    # Potenza/esponente per attenuare o accentuare i pesi
+    weights = inv ** exponent
     # Normalizza rispetto alla classe più frequente
     weights = weights / weights.min()
     return weights   # [1.0, ~7.6, ~38.5]
@@ -164,6 +165,7 @@ class MistakeDetectionLightningModule(L.LightningModule):
         warmup_steps:    int   = 500,
         # Loss
         focal_gamma:     float = 2.0,
+        class_weight_exp: float = 1.5,
         correct_frac:    float = 0.774,
         mistake_frac:    float = 0.159,
         correction_frac: float = 0.067,
@@ -177,7 +179,7 @@ class MistakeDetectionLightningModule(L.LightningModule):
 
         # ── Loss ──────────────────────────────────────────────────────────────
         class_weights = compute_class_weights(
-            correct_frac, mistake_frac, correction_frac
+            correct_frac, mistake_frac, correction_frac, exponent=class_weight_exp
         )
         if focal_gamma > 0:
             self.criterion = FocalLoss(
