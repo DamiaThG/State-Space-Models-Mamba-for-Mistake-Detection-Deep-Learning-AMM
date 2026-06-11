@@ -37,6 +37,7 @@ from lightning.pytorch.callbacks import (
 from src.models.baseline import TempAggMistakeDetector
 from src.datasets.dataloader import build_split_dataloaders
 from src.training.lightning_module import MistakeDetectionLightningModule
+from src.training.metrics_callback import MetricsCallback
 
 
 # ---------------------------------------------------------------------------
@@ -193,22 +194,20 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    # ── Configurazione Logging ─────────────────────────────────────────────
+    # ── Configurazione Logging (solo stdout — FileHandler aggiunto da MetricsCallback) ────
     log_dir = Path("experiments/logs")
     log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"training_baseline_{timestamp}.log"
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[logging.StreamHandler(sys.stdout)]
     )
 
-    logging.info(f"Avvio addestramento TempAgg Baseline. Log: {log_file}")
+    # args già parsati: creiamo subito il callback così cattura TUTTI i log nel file
+    metrics_cb = MetricsCallback(model_name="baseline", args=args)
+
+    logging.info(f"Avvio addestramento TempAgg Baseline. Run: {metrics_cb.run_id}")
 
     set_seed(args.seed)
     torch.set_float32_matmul_precision("high")
@@ -250,7 +249,7 @@ def main() -> None:
     )
 
     # ── Logger & Callbacks ─────────────────────────────────────────────────
-    run_name = args.wandb_run_name or f"tempagg-baseline-{timestamp}"
+    run_name = args.wandb_run_name or f"tempagg-baseline-{metrics_cb.run_id}"
 
     loggers = []
     if not args.no_wandb:
@@ -284,7 +283,7 @@ def main() -> None:
         devices                  = "auto",
         precision                = "16-mixed",
         logger                   = loggers if loggers else False,
-        callbacks                = [ckpt_callback, lr_monitor, early_stop],
+        callbacks                = [ckpt_callback, lr_monitor, early_stop, metrics_cb],
         log_every_n_steps        = 10,
         gradient_clip_val        = 1.0,
         accumulate_grad_batches  = args.accumulate_grad_batches,
@@ -302,18 +301,10 @@ def main() -> None:
 
     trainer.fit(lit_model, train_loader, val_loader, ckpt_path=ckpt_path)
 
-    logging.info("Training completato.")
     logging.info(f"Best checkpoint: {ckpt_callback.best_model_path}")
 
     if test_loader is not None:
-        logging.info("Avvio valutazione sul test set (best checkpoint)...")
-        test_results = trainer.test(lit_model, dataloaders=test_loader, ckpt_path="best")
-        logging.info("================================================")
-        logging.info("RISULTATI TEST SET:")
-        if test_results:
-            for k, v in test_results[0].items():
-                logging.info(f"  {k}: {v:.4f}" if isinstance(v, float) else f"  {k}: {v}")
-        logging.info("================================================")
+        trainer.test(lit_model, dataloaders=test_loader, ckpt_path="best")
 
     if not args.no_wandb:
         wandb.finish()

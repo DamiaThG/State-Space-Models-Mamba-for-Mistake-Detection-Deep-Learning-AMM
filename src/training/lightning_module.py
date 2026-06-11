@@ -151,7 +151,7 @@ class MistakeDetectionLightningModule(L.LightningModule):
       - FocalLoss (default, gamma=2.0) o CrossEntropyLoss (gamma=0) con class weighting
       - Masking del padding prima del calcolo della loss
       - Precision e Recall per classe (torchmetrics)
-      - Logging su WandB
+      - Logging metriche per-epoch tramite MetricsCallback
       - LR Schedule: LinearWarmup (3 epoche) → CosineAnnealing
     """
 
@@ -278,13 +278,15 @@ class MistakeDetectionLightningModule(L.LightningModule):
     # ------------------------------------------------------------------
     def test_step(
         self, batch: Dict[str, torch.Tensor], batch_idx: int
-    ) -> None:
+    ) -> Dict[str, torch.Tensor]:
         loss, preds, labels = self._shared_step(batch, "test")
         valid = labels != -1
         self.test_precision.update(preds[valid], labels[valid])
         self.test_recall.update(preds[valid], labels[valid])
         B = batch["features"].shape[0]
         self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True, batch_size=B)
+        # Ritorna preds e labels per MetricsCallback (timeline plot)
+        return {"preds": preds.cpu(), "labels": labels.cpu()}
 
     def on_test_epoch_end(self) -> None:
         self._log_per_class_metrics("test", self.test_precision, self.test_recall)
@@ -311,8 +313,8 @@ class MistakeDetectionLightningModule(L.LightningModule):
             metrics[f"{prefix}/precision_{name}"] = prec_vals[i].item()
             metrics[f"{prefix}/recall_{name}"]    = rec_vals[i].item()
 
-        # F1 per le classi minoritarie
-        for i in [1, 2]:
+        # F1 per tutte le classi
+        for i in range(3):
             name = class_names[i]
             p, r = prec_vals[i].item(), rec_vals[i].item()
             f1 = (2 * p * r / (p + r + 1e-8))

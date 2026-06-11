@@ -16,6 +16,7 @@ import wandb
 from src.datasets.dataloader import build_whole_video_dataloaders
 from src.training.lightning_module import MistakeDetectionLightningModule
 from src.models.xlstm_model import xLSTMMistakeDetector
+from src.training.metrics_callback import MetricsCallback
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Training script for xLSTM on Assembly101 whole videos")
@@ -46,21 +47,17 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # ── Configurazione Logging ─────────────────────────────────────────────
-    log_dir = Path("experiments/logs")
-    log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"training_xlstm_{timestamp}.log"
-
+    # ── Configurazione Logging (solo stdout — FileHandler aggiunto da MetricsCallback) ────
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[logging.StreamHandler(sys.stdout)]
     )
-    logging.info(f"Avvio addestramento xLSTM Whole Video. Log: {log_file}")
+
+    # args già parsati: creiamo subito il callback così cattura TUTTI i log nel file
+    metrics_cb = MetricsCallback(model_name="xlstm", args=args)
+
+    logging.info(f"Avvio addestramento xLSTM Whole Video. Run: {metrics_cb.run_id}")
 
     # 1. Impostazioni base
     L.seed_everything(args.seed)
@@ -70,7 +67,7 @@ def main():
     logging.info(f"Dispositivo: {device_str}")
     
     if args.wandb_run_name is None:
-        args.wandb_run_name = f"xlstm-wholevid-{timestamp}"
+        args.wandb_run_name = f"xlstm-wholevid-{metrics_cb.run_id}"
 
     # 2. Dataloaders (whole video)
     logging.info("Inizializzazione dataloaders...")
@@ -129,7 +126,6 @@ def main():
         patience  = 15,
         min_delta = 0.001,
     )
-    
     wandb_logger = WandbLogger(
         project=args.wandb_project,
         name=args.wandb_run_name,
@@ -146,7 +142,7 @@ def main():
         accelerator="gpu" if device_str == "cuda" else "cpu",
         devices=1,
         logger=wandb_logger,
-        callbacks=[checkpoint_callback, lr_monitor, early_stop],
+        callbacks=[checkpoint_callback, lr_monitor, early_stop, metrics_cb],
         accumulate_grad_batches=args.accumulate_grad_batches,
         precision="16-mixed" if device_str == "cuda" else "32-true",
         gradient_clip_val=1.0,
@@ -158,16 +154,8 @@ def main():
     trainer.fit(lightning_module, train_loader, val_loader)
 
     # 8. Testing (sul best checkpoint)
-    logging.info("Training completato.")
     logging.info(f"Best checkpoint: {checkpoint_callback.best_model_path}")
-    logging.info("Avvio valutazione sul test set (best checkpoint)...")
-    test_results = trainer.test(lightning_module, test_loader, ckpt_path="best")
-    logging.info("================================================")
-    logging.info("RISULTATI TEST SET:")
-    if test_results:
-        for k, v in test_results[0].items():
-            logging.info(f"  {k}: {v:.4f}" if isinstance(v, float) else f"  {k}: {v}")
-    logging.info("================================================")
+    trainer.test(lightning_module, test_loader, ckpt_path="best")
 
     wandb.finish()
     
