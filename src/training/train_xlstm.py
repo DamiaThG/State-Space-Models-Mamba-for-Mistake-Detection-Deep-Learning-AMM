@@ -5,6 +5,7 @@ import random
 import sys
 import logging
 from pathlib import Path
+from datetime import datetime as dt
 
 import torch
 import lightning as L
@@ -45,18 +46,33 @@ def parse_args():
 def main():
     args = parse_args()
     
+    # ── Configurazione Logging ─────────────────────────────────────────────
+    log_dir = Path("experiments/logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
+    log_file = log_dir / f"training_xlstm_{timestamp}.log"
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    logging.info(f"Avvio addestramento xLSTM Whole Video. Log: {log_file}")
+
     # 1. Impostazioni base
     L.seed_everything(args.seed)
     
     device_str = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using device: {device_str}")
+    logging.info(f"Dispositivo: {device_str}")
     
     if args.wandb_run_name is None:
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         args.wandb_run_name = f"xlstm-wholevid-{timestamp}"
 
     # 2. Dataloaders (whole video)
-    print("Inizializzazione dataloaders...")
+    logging.info("Inizializzazione dataloaders...")
     train_loader, val_loader, test_loader = build_whole_video_dataloaders(
         processed_dir=args.processed_dir,
         batch_size=args.batch_size,
@@ -69,7 +85,7 @@ def main():
     )
     
     # 3. Model
-    print("Inizializzazione modello xLSTM...")
+    logging.info("Inizializzazione modello xLSTM...")
     model = xLSTMMistakeDetector(
         input_dim=2048,
         d_model=args.d_model,
@@ -79,10 +95,12 @@ def main():
         max_seq_len=args.max_seq_len,
         use_checkpointing=args.use_checkpointing
     )
-    
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logging.info(f"Modello: xLSTM (Whole Video) — Parametri trainabili: {total_params:,}")
+
     # 4. Lightning Module
     total_steps = len(train_loader) * args.epochs // args.accumulate_grad_batches
-    print(f"Estimated total steps: {total_steps}")
+    logging.info(f"Estimated total steps: {total_steps}")
     
     lightning_module = MistakeDetectionLightningModule(
         model=model,
@@ -135,12 +153,22 @@ def main():
     )
     
     # 7. Training
-    print("Avvio training...")
+    logging.info("Avvio training...")
     trainer.fit(lightning_module, train_loader, val_loader)
-    
+
     # 8. Testing (sul best checkpoint)
-    print("Avvio testing...")
-    trainer.test(lightning_module, test_loader, ckpt_path="best")
+    logging.info("Training completato.")
+    logging.info(f"Best checkpoint: {checkpoint_callback.best_model_path}")
+    logging.info("Avvio valutazione sul test set (best checkpoint)...")
+    test_results = trainer.test(lightning_module, test_loader, ckpt_path="best")
+    logging.info("================================================")
+    logging.info("RISULTATI TEST SET:")
+    if test_results:
+        for k, v in test_results[0].items():
+            logging.info(f"  {k}: {v:.4f}" if isinstance(v, float) else f"  {k}: {v}")
+    logging.info("================================================")
+
+    wandb.finish()
     
 if __name__ == "__main__":
     main()

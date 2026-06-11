@@ -307,7 +307,13 @@ def main() -> None:
 
     if test_loader is not None:
         logging.info("Avvio valutazione sul test set (best checkpoint)...")
-        trainer.test(lit_model, dataloaders=test_loader, ckpt_path="best")
+        test_results = trainer.test(lit_model, dataloaders=test_loader, ckpt_path="best")
+        logging.info("================================================")
+        logging.info("RISULTATI TEST SET:")
+        if test_results:
+            for k, v in test_results[0].items():
+                logging.info(f"  {k}: {v:.4f}" if isinstance(v, float) else f"  {k}: {v}")
+        logging.info("================================================")
 
     if not args.no_wandb:
         wandb.finish()
