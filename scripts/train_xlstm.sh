@@ -50,13 +50,13 @@ export CUDA_HOME=/opt/conda
 TRAIN_CMD=(
     python src/training/train_xlstm.py
         --processed_dir   data/processed
-        --batch_size      4
+        --batch_size      2
         --num_workers     4
-        --accumulate_grad_batches 2
+        --accumulate_grad_batches 4
         --d_model         512
         --n_layers        6
         --dropout         0.2
-        --max_seq_len     25000
+        --max_seq_len     8000
         --use_checkpointing
         --epochs          50
         --lr              5e-5

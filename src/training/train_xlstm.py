@@ -64,6 +64,7 @@ def main():
 
     # 1. Impostazioni base
     L.seed_everything(args.seed)
+    torch.set_float32_matmul_precision("high")
     
     device_str = "cuda" if torch.cuda.is_available() else "cpu"
     logging.info(f"Dispositivo: {device_str}")
