@@ -1,0 +1,59 @@
+2026-06-11 13:11:27,234 [INFO] [MetricsCallback] Run ID: xlstm_001 | Log: experiments/logs/xlstm_001.log | Figures: figures/xlstm_001
+2026-06-11 13:11:27,234 [INFO] Avvio addestramento xLSTM Whole Video. Run: xlstm_001
+2026-06-11 13:11:27,238 [INFO] Dispositivo: cuda
+2026-06-11 13:11:27,238 [INFO] Inizializzazione dataloaders...
+2026-06-11 13:12:06,093 [INFO] Inizializzazione modello xLSTM...
+2026-06-11 13:12:06,689 [INFO] Modello: xLSTM (Whole Video) — Parametri trainabili: 10,888,243
+2026-06-11 13:12:06,689 [INFO] Estimated total steps: 1437
+2026-06-11 13:12:07,493 [INFO] Avvio training...
+2026-06-11 13:12:07,713 [INFO] ================================================================
+2026-06-11 13:12:07,713 [INFO] MODELLO : XLSTM  |  RUN : xlstm_001
+2026-06-11 13:12:07,714 [INFO] AVVIO   : 2026-06-11 13:12:07
+2026-06-11 13:12:07,714 [INFO] ================================================================
+2026-06-11 13:12:07,714 [INFO] PARAMETRI TRAINING:
+2026-06-11 13:12:07,714 [INFO]   accumulate_grad_batches            : 4
+2026-06-11 13:12:07,714 [INFO]   batch_size                         : 2
+2026-06-11 13:12:07,714 [INFO]   ckpt_dir                           : experiments/checkpoints
+2026-06-11 13:12:07,714 [INFO]   d_model                            : 512
+2026-06-11 13:12:07,714 [INFO]   dropout                            : 0.2
+2026-06-11 13:12:07,714 [INFO]   epochs                             : 50
+2026-06-11 13:12:07,714 [INFO]   focal_gamma                        : 2.0
+2026-06-11 13:12:07,714 [INFO]   lr                                 : 5e-05
+2026-06-11 13:12:07,714 [INFO]   max_seq_len                        : 8000
+2026-06-11 13:12:07,714 [INFO]   n_layers                           : 6
+2026-06-11 13:12:07,714 [INFO]   num_workers                        : 4
+2026-06-11 13:12:07,714 [INFO]   processed_dir                      : data/processed
+2026-06-11 13:12:07,715 [INFO]   seed                               : 42
+2026-06-11 13:12:07,715 [INFO]   use_checkpointing                  : True
+2026-06-11 13:12:07,715 [INFO]   wandb_project                      : mistake-detection
+2026-06-11 13:12:07,715 [INFO]   wandb_run_name                     : xlstm-wholevid-5273
+2026-06-11 13:12:07,715 [INFO]   weight_decay                       : 0.001
+2026-06-11 13:12:07,715 [INFO] ================================================================
+2026-06-11 13:18:13,781 [INFO] Epoch   0 | train_loss: nan | val_loss: 0.6909 | mistake    → P:nan R:nan F1:nan | correction → P:nan R:nan F1:nan | lr: nan
+2026-06-11 13:24:13,838 [INFO] Epoch   1 | train_loss: 0.9093 | val_loss: 0.7031 | mistake    → P:0.000 R:0.000 F1:0.000 | correction → P:0.000 R:0.000 F1:0.000 | lr: 2.00e-05
+2026-06-11 13:30:17,449 [INFO] Epoch   2 | train_loss: 0.9456 | val_loss: 0.7148 | mistake    → P:0.064 R:0.202 F1:0.097 | correction → P:0.018 R:0.036 F1:0.024 | lr: 3.50e-05
+2026-06-11 13:35:35,799 [INFO] Epoch   3 | train_loss: 0.8145 | val_loss: 0.9241 | mistake    → P:0.058 R:0.353 F1:0.099 | correction → P:0.009 R:0.043 F1:0.015 | lr: 5.00e-05
+2026-06-11 13:40:08,896 [INFO] Epoch   4 | train_loss: 0.7642 | val_loss: 0.8013 | mistake    → P:0.083 R:0.030 F1:0.044 | correction → P:0.038 R:0.090 F1:0.054 | lr: 4.99e-05
+2026-06-11 13:44:41,248 [INFO] Epoch   5 | train_loss: 0.6936 | val_loss: 0.9826 | mistake    → P:0.045 R:0.148 F1:0.069 | correction → P:0.049 R:0.173 F1:0.076 | lr: 4.98e-05
+2026-06-11 13:49:15,774 [INFO] Epoch   6 | train_loss: 0.5983 | val_loss: 0.8788 | mistake    → P:0.064 R:0.163 F1:0.092 | correction → P:0.029 R:0.206 F1:0.051 | lr: 4.95e-05
+2026-06-11 13:53:49,009 [INFO] Epoch   7 | train_loss: 0.5565 | val_loss: 1.0152 | mistake    → P:0.047 R:0.099 F1:0.063 | correction → P:0.017 R:0.254 F1:0.032 | lr: 4.91e-05
+2026-06-11 13:58:21,031 [INFO] Epoch   8 | train_loss: 0.4807 | val_loss: 1.0365 | mistake    → P:0.067 R:0.270 F1:0.107 | correction → P:0.039 R:0.178 F1:0.064 | lr: 4.86e-05
+2026-06-11 14:02:52,712 [INFO] Epoch   9 | train_loss: 0.4250 | val_loss: 1.0999 | mistake    → P:0.059 R:0.342 F1:0.100 | correction → P:0.012 R:0.088 F1:0.021 | lr: 4.80e-05
+2026-06-11 14:07:25,704 [INFO] Epoch  10 | train_loss: 0.4087 | val_loss: 1.3114 | mistake    → P:0.052 R:0.196 F1:0.083 | correction → P:0.036 R:0.075 F1:0.049 | lr: 4.73e-05
+2026-06-11 14:11:59,659 [INFO] Epoch  11 | train_loss: 0.3737 | val_loss: 1.0937 | mistake    → P:0.125 R:0.150 F1:0.137 | correction → P:0.011 R:0.049 F1:0.017 | lr: 4.65e-05
+2026-06-11 14:16:33,402 [INFO] Epoch  12 | train_loss: 0.3629 | val_loss: 1.2923 | mistake    → P:0.051 R:0.280 F1:0.087 | correction → P:0.039 R:0.385 F1:0.071 | lr: 4.57e-05
+2026-06-11 14:21:06,152 [INFO] Epoch  13 | train_loss: 0.2947 | val_loss: 1.3869 | mistake    → P:0.099 R:0.240 F1:0.140 | correction → P:0.048 R:0.215 F1:0.078 | lr: 4.47e-05
+2026-06-11 14:25:40,115 [INFO] Epoch  14 | train_loss: 0.3809 | val_loss: 1.5373 | mistake    → P:0.076 R:0.318 F1:0.122 | correction → P:0.023 R:0.107 F1:0.038 | lr: 4.36e-05
+2026-06-11 14:30:13,826 [INFO] Epoch  15 | train_loss: 0.2674 | val_loss: 1.6044 | mistake    → P:0.097 R:0.247 F1:0.139 | correction → P:0.051 R:0.076 F1:0.061 | lr: 4.25e-05
+2026-06-11 14:30:14,553 [INFO] ================================================================
+2026-06-11 14:30:14,553 [INFO] TRAINING COMPLETATO
+2026-06-11 14:30:14,555 [INFO] Best epoch    : 0
+2026-06-11 14:30:14,555 [INFO] Best val_loss : 0.6909
+2026-06-11 14:30:14,555 [INFO] ================================================================
+2026-06-11 14:30:15,089 [INFO] Grafici training salvati in: figures/xlstm_001
+2026-06-11 14:30:15,093 [INFO] Best checkpoint: /home/nnccld01s15c351l/assembly-mistake-detection/experiments/checkpoints/xlstm-wholevid-epoch=00-val/loss=0.6909-v1.ckpt
+2026-06-11 14:30:28,862 [INFO] ================================================================
+2026-06-11 14:30:28,863 [INFO] RISULTATI TEST SET:
+2026-06-11 14:30:28,863 [INFO]   test/loss: 0.6703
+2026-06-11 14:30:28,863 [INFO] ================================================================
+2026-06-11 14:30:29,490 [INFO] Grafici test salvati in: figures/xlstm_001
