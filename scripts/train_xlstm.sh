@@ -67,6 +67,7 @@ TRAIN_CMD=(
         --wandb_project   mistake-detection
         --wandb_run_name  "xlstm-wholevid-${SLURM_JOB_ID:-interactive}"
         --ckpt_dir        experiments/checkpoints
+        --resume
         "$@"
 )
 

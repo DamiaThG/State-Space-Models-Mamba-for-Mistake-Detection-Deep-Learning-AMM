@@ -43,6 +43,7 @@ def parse_args():
     parser.add_argument("--wandb_project", type=str, default="mistake-detection", help="W&B project name")
     parser.add_argument("--wandb_run_name", type=str, default=None, help="W&B run name")
     parser.add_argument("--ckpt_dir", type=str, default="experiments/checkpoints", help="Directory for saving checkpoints")
+    parser.add_argument("--resume", action="store_true", help="Resume training from the last checkpoint")
     
     return parser.parse_args()
 
@@ -154,7 +155,16 @@ def main():
     
     # 7. Training
     logging.info("Avvio training...")
-    trainer.fit(lightning_module, train_loader, val_loader)
+    ckpt_path = None
+    if args.resume:
+        last_ckpt = os.path.join(args.ckpt_dir, "last.ckpt")
+        if os.path.exists(last_ckpt):
+            logging.info(f"Ripresa dell'addestramento dal checkpoint: {last_ckpt}")
+            ckpt_path = last_ckpt
+        else:
+            logging.warning(f"Flag --resume usato, ma {last_ckpt} non trovato. Partenza da zero.")
+
+    trainer.fit(lightning_module, train_loader, val_loader, ckpt_path=ckpt_path)
 
     # 8. Testing (sul best checkpoint)
     logging.info(f"Best checkpoint: {checkpoint_callback.best_model_path}")
