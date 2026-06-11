@@ -53,12 +53,14 @@ TRAIN_CMD=(
         --accumulate_grad_batches 2
         --d_model         512
         --n_layers        6
-        --dropout         0.2
+        --dropout         0.4
         --max_seq_len     25000
         --use_checkpointing
         --epochs          50
-        --lr              5e-5
-        --weight_decay    1e-3
+        --lr              2e-5
+        --weight_decay    1e-2
+        --focal_gamma     1.0
+        --class_weight_exp 1.0
         --seed            42
         --wandb_project   mistake-detection
         --wandb_run_name  "mamba-ssm-wholevid-${SLURM_JOB_ID:-interactive}"

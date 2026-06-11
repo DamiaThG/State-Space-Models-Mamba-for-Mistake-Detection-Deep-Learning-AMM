@@ -111,6 +111,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--accumulate_grad_batches", type=int, default=1)
     p.add_argument("--focal_gamma",  type=float, default=2.0,
                    help="Esponente Focal Loss (gamma=0 → CrossEntropyLoss pesata standard)")
+    p.add_argument("--class_weight_exp", type=float, default=1.5,
+                   help="Esponente per attenuare o accentuare i pesi delle classi")
 
     # Logging
     p.add_argument("--wandb_project",   default="mistake-detection")
@@ -183,6 +185,7 @@ def main() -> None:
         lr           = args.lr,
         weight_decay = args.weight_decay,
         focal_gamma  = args.focal_gamma,
+        class_weight_exp = args.class_weight_exp,
     )
 
     # ── Logger & Callbacks ─────────────────────────────────────────────────
