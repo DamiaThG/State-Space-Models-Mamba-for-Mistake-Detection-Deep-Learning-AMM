@@ -56,7 +56,7 @@ TRAIN_CMD=(
         --dropout         0.2
         --max_seq_len     25000
         --use_checkpointing
-        --epochs          50
+        --epochs          100
         --lr              5e-5
         --weight_decay    1e-3
         --focal_gamma     2.0

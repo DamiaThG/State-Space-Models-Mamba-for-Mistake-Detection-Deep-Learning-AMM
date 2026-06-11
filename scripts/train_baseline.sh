@@ -56,7 +56,7 @@ TRAIN_CMD=(
         --spanning_scales 8 16 24
         --recent_scales   30 90 150
         --max_seq_len     8000
-        --epochs          50
+        --epochs          100
         --lr              2e-4
         --weight_decay    1e-4
         --focal_gamma     2.0
