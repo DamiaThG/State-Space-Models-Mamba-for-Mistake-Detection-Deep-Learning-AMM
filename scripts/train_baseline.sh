@@ -52,13 +52,13 @@ TRAIN_CMD=(
         --batch_size      2
         --num_workers     4
         --hidden_dim      512
-        --dropout         0.4
+        --dropout         0.2
         --spanning_scales 8 16 24
         --recent_scales   30 90 150
         --max_seq_len     8000
         --epochs          50
-        --lr              2e-5
-        --weight_decay    1e-2
+        --lr              2e-4
+        --weight_decay    1e-4
         --focal_gamma     2.0
         --class_weight_exp 1.0
         --seed            42
