@@ -53,14 +53,14 @@ TRAIN_CMD=(
         --accumulate_grad_batches 2
         --d_model         512
         --n_layers        6
-        --dropout         0.4
+        --dropout         0.2
         --max_seq_len     25000
         --use_checkpointing
         --epochs          50
-        --lr              2e-5
-        --weight_decay    1e-2
+        --lr              5e-5
+        --weight_decay    1e-3
         --focal_gamma     2.0
-        --class_weight_exp 1.0
+        --class_weight_exp 1.0 #se max_seq_len = none, questo è da aumentare a 1.5, altrimenti il modello si perde totalmente mistake e correction
         --seed            42
         --wandb_project   mistake-detection
         --wandb_run_name  "mamba-ssm-wholevid-${SLURM_JOB_ID:-interactive}"
