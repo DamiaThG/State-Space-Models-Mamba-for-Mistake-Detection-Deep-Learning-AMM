@@ -115,17 +115,17 @@ def main():
     
     checkpoint_callback = ModelCheckpoint(
         dirpath=args.ckpt_dir,
-        filename="xlstm-wholevid-{epoch:02d}-{val/loss:.4f}",
-        monitor="val/loss",
-        mode="min",
+        filename="xlstm-wholevid-{epoch:02d}-{val/f1_macro:.4f}",
+        monitor="val/f1_macro",
+        mode="max",
         save_top_k=3,
         save_last=True
     )
     
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
     early_stop = EarlyStopping(
-        monitor   = "val/loss",
-        mode      = "min",
+        monitor   = "val/f1_macro",
+        mode      = "max",
         patience  = 15,
         min_delta = 0.001,
     )

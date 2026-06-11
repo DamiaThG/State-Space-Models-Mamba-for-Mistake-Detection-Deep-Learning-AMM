@@ -178,6 +178,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--accumulate_grad_batches", type=int, default=1)
     p.add_argument("--focal_gamma",  type=float, default=2.0,
                    help="Esponente Focal Loss (gamma=0 → CrossEntropyLoss pesata standard)")
+    p.add_argument("--class_weight_exp", type=float, default=1.5,
+                   help="Esponente per attenuare o accentuare i pesi delle classi")
 
     # Logging
     p.add_argument("--wandb_project",   default="mistake-detection")
@@ -246,6 +248,7 @@ def main() -> None:
         lr           = args.lr,
         weight_decay = args.weight_decay,
         focal_gamma  = args.focal_gamma,
+        class_weight_exp = args.class_weight_exp,
     )
 
     # ── Logger & Callbacks ─────────────────────────────────────────────────
@@ -262,15 +265,15 @@ def main() -> None:
 
     ckpt_callback = ModelCheckpoint(
         dirpath      = args.ckpt_dir,
-        filename     = "tempagg-{epoch:02d}-{val/loss:.4f}",
-        monitor      = "val/loss",
-        mode         = "min",
+        filename     = "tempagg-{epoch:02d}-{val/f1_macro:.4f}",
+        monitor      = "val/f1_macro",
+        mode         = "max",
         save_top_k   = 3,
         save_last    = True,
     )
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
     early_stop = EarlyStopping(
-        monitor   = "val/recall_mistake",
+        monitor   = "val/f1_macro",
         mode      = "max",
         patience  = 15,
         min_delta = 0.001,

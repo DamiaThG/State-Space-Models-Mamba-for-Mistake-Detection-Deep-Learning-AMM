@@ -202,18 +202,18 @@ def main() -> None:
 
     ckpt_callback = ModelCheckpoint(
         dirpath      = args.ckpt_dir,
-        filename     = "mamba-wholevid-{epoch:02d}-{val/loss:.4f}",
-        monitor      = "val/loss",
-        mode         = "min",
+        filename     = "mamba-wholevid-{epoch:02d}-{val/f1_macro:.4f}",
+        monitor      = "val/f1_macro",
+        mode         = "max",
         save_top_k   = 3,
         save_last    = True,
     )
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
     
-    # N.B. Anche qui monitoriamo la Recall sui Mistake o la Validation Loss globale.
+    # N.B. Monitoriamo la macro F1 per premiare la reale detection.
     early_stop = EarlyStopping(
-        monitor   = "val/loss", # O val/recall_mistake se preferito
-        mode      = "min",
+        monitor   = "val/f1_macro",
+        mode      = "max",
         patience  = 15,
         min_delta = 0.001,
     )

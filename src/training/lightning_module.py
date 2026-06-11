@@ -322,6 +322,12 @@ class MistakeDetectionLightningModule(L.LightningModule):
             f1 = (2 * p * r / (p + r + 1e-8))
             metrics[f"{prefix}/f1_{name}"] = f1
 
+        # Macro F1 (media aritmetica semplice dei tre F1)
+        f1_correct    = metrics[f"{prefix}/f1_correct"]
+        f1_mistake    = metrics[f"{prefix}/f1_mistake"]
+        f1_correction = metrics[f"{prefix}/f1_correction"]
+        metrics[f"{prefix}/f1_macro"] = (f1_correct + f1_mistake + f1_correction) / 3.0
+
         self.log_dict(metrics, on_step=False, on_epoch=True, sync_dist=True)
 
     # ------------------------------------------------------------------
