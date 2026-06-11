@@ -22,3 +22,8 @@ __pycache__/
 #mamba
 mamba_env.tar
 mamba_env.sif
+
+experiments/checkpoints/**
+experiments/configs/**
+experiments/logs/**
+figures/**
