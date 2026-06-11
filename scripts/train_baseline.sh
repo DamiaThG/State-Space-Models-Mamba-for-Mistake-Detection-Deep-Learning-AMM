@@ -1,11 +1,16 @@
 #!/bin/bash
 # ============================================================
-# SLURM Job Script — TempAgg Baseline Training
+# Script unico — TempAgg Baseline Training
 # Cluster: GCluster (gcluster.dmi.unict.it)
-# Sottometti con: sbatch scripts/train_baseline.sh
 #
-# NOTA: Questo script è il wrapper SLURM+Apptainer.
-# La logica di training è in src/training/train_baseline.py.
+# Usi:
+#   ./scripts/train_baseline.sh                    # da dentro il container (interattivo)
+#   bash  scripts/train_baseline.sh                # da fuori il container
+#   sbatch scripts/train_baseline.sh               # SLURM (batch)
+#   ./scripts/train_baseline.sh --lr 1e-4          # con override (in qualsiasi modalità)
+#
+# Lo script rileva automaticamente se è già dentro Apptainer
+# e si comporta di conseguenza.
 # ============================================================
 
 #SBATCH --job-name=tempagg_baseline
@@ -19,48 +24,64 @@
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00
 
-# ---------- Ambiente ----------
+set -euo pipefail
+
+# ---------- Info ambiente ----------
 echo "================================================"
-echo "Job ID    : $SLURM_JOB_ID"
+echo "Job ID    : ${SLURM_JOB_ID:-N/A}"
 echo "Node      : $(hostname)"
 echo "Start     : $(date)"
 echo "Working   : $(pwd)"
+echo "GPU       : $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'N/A')"
 echo "================================================"
 
-# ---------- Logging dir ----------
+# ---------- Directory ----------
 mkdir -p experiments/logs
 mkdir -p experiments/checkpoints
 
-# ---------- Lancio nel container ----------
-# La baseline usa l'immagine di default (latest.sif)
-APPTAINER_IMAGE="/shared/sifs/latest.sif"
+# ---------- Variabili d'ambiente comuni ----------
+export WANDB_MODE=offline
+export PYTHONUNBUFFERED=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-apptainer exec --nv \
-    --bind $(pwd):/workspace \
-    --pwd /workspace \
-    $APPTAINER_IMAGE \
-    bash -c "
-        export WANDB_MODE=offline
-        export PYTHONUNBUFFERED=1
-        export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-        PYTHONPATH=. python src/training/train_baseline.py \
-            --processed_dir   data/processed \
-            --annots_dir      data/annotations/assembly101-mistake-detection/annots \
-            --batch_size      4 \
-            --num_workers     4 \
-            --hidden_dim      256 \
-            --dropout         0.3 \
-            --spanning_scales 8 16 24 \
-            --recent_scales   30 90 150 \
-            --max_seq_len     500 \
-            --epochs          50 \
-            --lr              5e-5 \
-            --weight_decay    1e-3 \
-            --seed            42 \
-            --wandb_project   mistake-detection \
-            --wandb_run_name  \"tempagg-baseline-$SLURM_JOB_ID\" \
-            --ckpt_dir        experiments/checkpoints
-    "
+# ---------- Parametri training ----------
+TRAIN_CMD=(
+    python src/training/train_baseline.py
+        --processed_dir   data/processed
+        --annots_dir      data/annotations/assembly101-mistake-detection/annots
+        --batch_size      2
+        --num_workers     4
+        --hidden_dim      512
+        --dropout         0.2
+        --spanning_scales 8 16 24
+        --recent_scales   30 90 150
+        --max_seq_len     8000
+        --epochs          50
+        --lr              5e-5
+        --weight_decay    1e-3
+        --seed            42
+        --wandb_project   mistake-detection
+        --wandb_run_name  "tempagg-baseline-${SLURM_JOB_ID:-interactive}"
+        --ckpt_dir        experiments/checkpoints
+        "$@"
+)
+
+# ---------- Esecuzione ----------
+if [ -n "${APPTAINER_NAME:-}${SINGULARITY_NAME:-}" ]; then
+    # Già dentro il container: lancia Python direttamente
+    echo "Modalità: dentro Apptainer — lancio Python direttamente"
+    PYTHONPATH=. "${TRAIN_CMD[@]}"
+else
+    # Fuori dal container: usa apptainer exec
+    echo "Modalità: fuori Apptainer — lancio via apptainer exec"
+    APPTAINER_IMAGE="mamba_env.sif"
+    apptainer exec --nv \
+        --env PYTHONPATH=/workspace \
+        --bind "$(pwd)":/workspace \
+        --pwd /workspace \
+        "$APPTAINER_IMAGE" \
+        "${TRAIN_CMD[@]}"
+fi
 
 echo "================================================"
 echo "End: $(date)"
