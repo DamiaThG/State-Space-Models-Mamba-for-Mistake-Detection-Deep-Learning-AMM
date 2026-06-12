@@ -265,7 +265,7 @@ def main() -> None:
 
     ckpt_callback = ModelCheckpoint(
         dirpath      = args.ckpt_dir,
-        filename     = "tempagg-{epoch:02d}-{val/f1_macro:.4f}",
+        filename     = "tempagg-{epoch:02d}-val_f1={val/f1_macro:.4f}",
         monitor      = "val/f1_macro",
         mode         = "max",
         save_top_k   = 3,
