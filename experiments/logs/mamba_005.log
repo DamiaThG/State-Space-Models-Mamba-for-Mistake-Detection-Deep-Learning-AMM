@@ -1,0 +1,94 @@
+2026-06-12 22:50:54,896 [INFO] [MetricsCallback] Run ID: mamba_005 | Log: experiments/logs/mamba_005.log | Figures: figures/mamba_005
+2026-06-12 22:50:54,897 [INFO] Avvio addestramento Mamba Whole Video. Run: mamba_005
+2026-06-12 22:50:54,908 [INFO] Dispositivo: cuda
+2026-06-12 22:51:20,166 [INFO] Modello: Mamba (Whole Video) — Parametri trainabili: 21,532,163
+2026-06-12 22:51:20,760 [INFO] ================================================================
+2026-06-12 22:51:20,760 [INFO] MODELLO : MAMBA  |  RUN : mamba_005
+2026-06-12 22:51:20,760 [INFO] AVVIO   : 2026-06-12 22:51:20
+2026-06-12 22:51:20,760 [INFO] ================================================================
+2026-06-12 22:51:20,760 [INFO] PARAMETRI TRAINING:
+2026-06-12 22:51:20,760 [INFO]   accumulate_grad_batches            : 2
+2026-06-12 22:51:20,761 [INFO]   batch_size                         : 4
+2026-06-12 22:51:20,761 [INFO]   ckpt_dir                           : experiments/checkpoints
+2026-06-12 22:51:20,761 [INFO]   class_weight_exp                   : 1.0
+2026-06-12 22:51:20,761 [INFO]   d_model                            : 512
+2026-06-12 22:51:20,761 [INFO]   dropout                            : 0.2
+2026-06-12 22:51:20,761 [INFO]   epochs                             : 100
+2026-06-12 22:51:20,761 [INFO]   focal_gamma                        : 2.0
+2026-06-12 22:51:20,761 [INFO]   lr                                 : 5e-05
+2026-06-12 22:51:20,762 [INFO]   max_seq_len                        : 12000
+2026-06-12 22:51:20,762 [INFO]   n_layers                           : 12
+2026-06-12 22:51:20,762 [INFO]   no_wandb                           : False
+2026-06-12 22:51:20,762 [INFO]   num_workers                        : 4
+2026-06-12 22:51:20,762 [INFO]   processed_dir                      : data/processed
+2026-06-12 22:51:20,762 [INFO]   resume                             : False
+2026-06-12 22:51:20,762 [INFO]   seed                               : 42
+2026-06-12 22:51:20,762 [INFO]   test_split                         : 0.15
+2026-06-12 22:51:20,763 [INFO]   use_checkpointing                  : True
+2026-06-12 22:51:20,763 [INFO]   val_split                          : 0.15
+2026-06-12 22:51:20,763 [INFO]   wandb_project                      : mistake-detection
+2026-06-12 22:51:20,763 [INFO]   wandb_run_name                     : mamba-ssm-wholevid-5324
+2026-06-12 22:51:20,763 [INFO]   weight_decay                       : 0.001
+2026-06-12 22:51:20,763 [INFO] ================================================================
+2026-06-12 22:52:01,204 [INFO] Epoch   0 | train_loss: 0.7361 | val_loss: 0.3973 | mistake    → P:0.050 R:0.302 F1:0.086 | correction → P:0.003 R:0.002 F1:0.002 | lr: 2.00e-05
+2026-06-12 22:52:35,296 [INFO] Epoch   1 | train_loss: 0.6359 | val_loss: 0.3344 | mistake    → P:0.055 R:0.076 F1:0.064 | correction → P:0.070 R:0.019 F1:0.030 | lr: 3.50e-05
+2026-06-12 22:53:10,722 [INFO] Epoch   2 | train_loss: 0.4796 | val_loss: 0.3105 | mistake    → P:0.058 R:0.026 F1:0.036 | correction → P:0.040 R:0.033 F1:0.036 | lr: 5.00e-05
+2026-06-12 22:53:45,911 [INFO] Epoch   3 | train_loss: 0.4211 | val_loss: 0.3397 | mistake    → P:0.085 R:0.173 F1:0.114 | correction → P:0.020 R:0.050 F1:0.028 | lr: 5.00e-05
+2026-06-12 22:54:21,673 [INFO] Epoch   4 | train_loss: 0.3759 | val_loss: 0.3044 | mistake    → P:0.122 R:0.014 F1:0.026 | correction → P:0.042 R:0.011 F1:0.017 | lr: 4.99e-05
+2026-06-12 22:54:55,311 [INFO] Epoch   5 | train_loss: 0.3355 | val_loss: 0.3347 | mistake    → P:0.054 R:0.170 F1:0.082 | correction → P:0.049 R:0.014 F1:0.021 | lr: 4.99e-05
+2026-06-12 22:55:28,681 [INFO] Epoch   6 | train_loss: 0.3204 | val_loss: 0.3282 | mistake    → P:0.064 R:0.028 F1:0.039 | correction → P:0.032 R:0.111 F1:0.050 | lr: 4.98e-05
+2026-06-12 22:56:03,783 [INFO] Epoch   7 | train_loss: 0.2896 | val_loss: 0.3626 | mistake    → P:0.067 R:0.133 F1:0.089 | correction → P:0.063 R:0.012 F1:0.021 | lr: 4.97e-05
+2026-06-12 22:56:38,800 [INFO] Epoch   8 | train_loss: 0.2850 | val_loss: 0.3678 | mistake    → P:0.073 R:0.048 F1:0.058 | correction → P:0.015 R:0.110 F1:0.026 | lr: 4.95e-05
+2026-06-12 22:57:11,959 [INFO] Epoch   9 | train_loss: 0.2659 | val_loss: 0.3604 | mistake    → P:0.048 R:0.136 F1:0.071 | correction → P:0.021 R:0.041 F1:0.028 | lr: 4.94e-05
+2026-06-12 22:57:45,079 [INFO] Epoch  10 | train_loss: 0.2488 | val_loss: 0.3658 | mistake    → P:0.071 R:0.280 F1:0.113 | correction → P:0.008 R:0.015 F1:0.010 | lr: 4.92e-05
+2026-06-12 22:58:18,262 [INFO] Epoch  11 | train_loss: 0.2391 | val_loss: 0.4060 | mistake    → P:0.090 R:0.178 F1:0.120 | correction → P:0.035 R:0.023 F1:0.028 | lr: 4.90e-05
+2026-06-12 22:58:53,349 [INFO] Epoch  12 | train_loss: 0.2175 | val_loss: 0.4286 | mistake    → P:0.115 R:0.234 F1:0.154 | correction → P:0.017 R:0.041 F1:0.024 | lr: 4.87e-05
+2026-06-12 22:59:28,499 [INFO] Epoch  13 | train_loss: 0.1978 | val_loss: 0.4609 | mistake    → P:0.078 R:0.295 F1:0.123 | correction → P:0.023 R:0.031 F1:0.027 | lr: 4.84e-05
+2026-06-12 23:00:01,661 [INFO] Epoch  14 | train_loss: 0.1918 | val_loss: 0.4594 | mistake    → P:0.104 R:0.350 F1:0.160 | correction → P:0.009 R:0.032 F1:0.014 | lr: 4.82e-05
+2026-06-12 23:00:36,778 [INFO] Epoch  15 | train_loss: 0.1754 | val_loss: 0.5437 | mistake    → P:0.112 R:0.269 F1:0.158 | correction → P:0.026 R:0.033 F1:0.029 | lr: 4.78e-05
+2026-06-12 23:01:11,930 [INFO] Epoch  16 | train_loss: 0.1566 | val_loss: 0.5678 | mistake    → P:0.119 R:0.159 F1:0.136 | correction → P:0.034 R:0.106 F1:0.052 | lr: 4.75e-05
+2026-06-12 23:01:47,071 [INFO] Epoch  17 | train_loss: 0.1482 | val_loss: 0.5216 | mistake    → P:0.103 R:0.341 F1:0.159 | correction → P:0.027 R:0.045 F1:0.034 | lr: 4.71e-05
+2026-06-12 23:02:20,116 [INFO] Epoch  18 | train_loss: 0.1314 | val_loss: 0.6438 | mistake    → P:0.163 R:0.153 F1:0.158 | correction → P:0.012 R:0.008 F1:0.009 | lr: 4.68e-05
+2026-06-12 23:02:55,313 [INFO] Epoch  19 | train_loss: 0.1343 | val_loss: 0.7241 | mistake    → P:0.108 R:0.150 F1:0.126 | correction → P:0.016 R:0.012 F1:0.013 | lr: 4.63e-05
+2026-06-12 23:03:28,919 [INFO] Epoch  20 | train_loss: 0.1176 | val_loss: 0.7363 | mistake    → P:0.104 R:0.204 F1:0.138 | correction → P:0.016 R:0.005 F1:0.007 | lr: 4.59e-05
+2026-06-12 23:04:02,114 [INFO] Epoch  21 | train_loss: 0.1251 | val_loss: 0.6060 | mistake    → P:0.139 R:0.203 F1:0.165 | correction → P:0.045 R:0.041 F1:0.043 | lr: 4.55e-05
+2026-06-12 23:04:37,326 [INFO] Epoch  22 | train_loss: 0.1106 | val_loss: 0.6541 | mistake    → P:0.113 R:0.104 F1:0.108 | correction → P:0.009 R:0.015 F1:0.012 | lr: 4.50e-05
+2026-06-12 23:05:10,700 [INFO] Epoch  23 | train_loss: 0.1072 | val_loss: 0.6857 | mistake    → P:0.119 R:0.174 F1:0.142 | correction → P:0.020 R:0.020 F1:0.020 | lr: 4.45e-05
+2026-06-12 23:05:43,681 [INFO] Epoch  24 | train_loss: 0.0946 | val_loss: 0.6915 | mistake    → P:0.107 R:0.194 F1:0.138 | correction → P:0.014 R:0.009 F1:0.011 | lr: 4.40e-05
+2026-06-12 23:06:17,028 [INFO] Epoch  25 | train_loss: 0.0918 | val_loss: 0.7982 | mistake    → P:0.145 R:0.150 F1:0.147 | correction → P:0.027 R:0.031 F1:0.029 | lr: 4.34e-05
+2026-06-12 23:06:52,117 [INFO] Epoch  26 | train_loss: 0.0843 | val_loss: 0.7438 | mistake    → P:0.124 R:0.182 F1:0.147 | correction → P:0.056 R:0.054 F1:0.055 | lr: 4.29e-05
+2026-06-12 23:07:27,556 [INFO] Epoch  27 | train_loss: 0.0872 | val_loss: 0.7909 | mistake    → P:0.089 R:0.150 F1:0.112 | correction → P:0.048 R:0.065 F1:0.055 | lr: 4.23e-05
+2026-06-12 23:08:00,607 [INFO] Epoch  28 | train_loss: 0.0776 | val_loss: 0.8453 | mistake    → P:0.147 R:0.189 F1:0.165 | correction → P:0.048 R:0.011 F1:0.018 | lr: 4.17e-05
+2026-06-12 23:08:35,688 [INFO] Epoch  29 | train_loss: 0.0704 | val_loss: 0.7903 | mistake    → P:0.161 R:0.199 F1:0.178 | correction → P:0.035 R:0.035 F1:0.035 | lr: 4.11e-05
+2026-06-12 23:09:10,939 [INFO] Epoch  30 | train_loss: 0.0701 | val_loss: 0.9393 | mistake    → P:0.104 R:0.133 F1:0.117 | correction → P:0.064 R:0.021 F1:0.032 | lr: 4.05e-05
+2026-06-12 23:09:44,396 [INFO] Epoch  31 | train_loss: 0.0606 | val_loss: 0.8004 | mistake    → P:0.162 R:0.199 F1:0.179 | correction → P:0.052 R:0.045 F1:0.048 | lr: 3.99e-05
+2026-06-12 23:10:19,686 [INFO] Epoch  32 | train_loss: 0.0702 | val_loss: 0.8543 | mistake    → P:0.109 R:0.125 F1:0.116 | correction → P:0.038 R:0.011 F1:0.017 | lr: 3.92e-05
+2026-06-12 23:10:53,081 [INFO] Epoch  33 | train_loss: 0.0609 | val_loss: 0.9500 | mistake    → P:0.109 R:0.136 F1:0.121 | correction → P:0.041 R:0.035 F1:0.038 | lr: 3.85e-05
+2026-06-12 23:11:26,322 [INFO] Epoch  34 | train_loss: 0.0551 | val_loss: 0.9109 | mistake    → P:0.151 R:0.157 F1:0.154 | correction → P:0.045 R:0.028 F1:0.035 | lr: 3.79e-05
+2026-06-12 23:11:59,622 [INFO] Epoch  35 | train_loss: 0.0588 | val_loss: 1.0551 | mistake    → P:0.141 R:0.120 F1:0.129 | correction → P:0.059 R:0.013 F1:0.021 | lr: 3.72e-05
+2026-06-12 23:12:32,850 [INFO] Epoch  36 | train_loss: 0.0532 | val_loss: 0.9438 | mistake    → P:0.200 R:0.152 F1:0.172 | correction → P:0.073 R:0.021 F1:0.033 | lr: 3.65e-05
+2026-06-12 23:13:08,025 [INFO] Epoch  37 | train_loss: 0.0453 | val_loss: 1.1034 | mistake    → P:0.097 R:0.089 F1:0.093 | correction → P:0.043 R:0.012 F1:0.019 | lr: 3.57e-05
+2026-06-12 23:13:41,409 [INFO] Epoch  38 | train_loss: 0.0407 | val_loss: 1.0387 | mistake    → P:0.171 R:0.168 F1:0.170 | correction → P:0.038 R:0.016 F1:0.023 | lr: 3.50e-05
+2026-06-12 23:14:14,586 [INFO] Epoch  39 | train_loss: 0.0446 | val_loss: 1.0175 | mistake    → P:0.141 R:0.131 F1:0.135 | correction → P:0.088 R:0.041 F1:0.056 | lr: 3.43e-05
+2026-06-12 23:14:47,805 [INFO] Epoch  40 | train_loss: 0.0410 | val_loss: 1.0771 | mistake    → P:0.135 R:0.163 F1:0.148 | correction → P:0.067 R:0.021 F1:0.031 | lr: 3.35e-05
+2026-06-12 23:15:20,920 [INFO] Epoch  41 | train_loss: 0.0375 | val_loss: 1.0197 | mistake    → P:0.153 R:0.141 F1:0.147 | correction → P:0.079 R:0.018 F1:0.030 | lr: 3.27e-05
+2026-06-12 23:15:54,046 [INFO] Epoch  42 | train_loss: 0.0370 | val_loss: 1.1852 | mistake    → P:0.157 R:0.095 F1:0.118 | correction → P:0.185 R:0.015 F1:0.028 | lr: 3.20e-05
+2026-06-12 23:16:27,116 [INFO] Epoch  43 | train_loss: 0.0345 | val_loss: 1.1111 | mistake    → P:0.163 R:0.130 F1:0.145 | correction → P:0.021 R:0.004 F1:0.006 | lr: 3.12e-05
+2026-06-12 23:17:00,544 [INFO] Epoch  44 | train_loss: 0.0293 | val_loss: 1.1011 | mistake    → P:0.168 R:0.150 F1:0.158 | correction → P:0.124 R:0.020 F1:0.034 | lr: 3.04e-05
+2026-06-12 23:17:33,759 [INFO] Epoch  45 | train_loss: 0.0284 | val_loss: 1.1773 | mistake    → P:0.169 R:0.145 F1:0.156 | correction → P:0.050 R:0.010 F1:0.017 | lr: 2.96e-05
+2026-06-12 23:18:07,108 [INFO] Epoch  46 | train_loss: 0.0314 | val_loss: 1.1715 | mistake    → P:0.117 R:0.104 F1:0.110 | correction → P:0.105 R:0.007 F1:0.013 | lr: 2.88e-05
+2026-06-12 23:18:07,326 [INFO] ================================================================
+2026-06-12 23:18:07,326 [INFO] TRAINING COMPLETATO
+2026-06-12 23:18:07,326 [INFO] Best epoch    : 4
+2026-06-12 23:18:07,326 [INFO] Best val_loss : 0.3044
+2026-06-12 23:18:07,326 [INFO] ================================================================
+2026-06-12 23:18:07,810 [INFO] Grafici training salvati in: figures/mamba_005
+2026-06-12 23:18:07,816 [INFO] Best checkpoint: /home/mssdmn01t05c351v/assembly-mistake-detection/experiments/checkpoints/mamba-wholevid-epoch=31-val_f1=val/f1_macro=0.3974.ckpt
+2026-06-12 23:18:13,375 [INFO] ================================================================
+2026-06-12 23:18:13,375 [INFO] RISULTATI TEST SET:
+2026-06-12 23:18:13,375 [INFO]   test/loss: 0.8288
+2026-06-12 23:18:13,694 [INFO]   test/correct    → P:0.9653 R:0.9371 F1:0.9510
+2026-06-12 23:18:13,694 [INFO]   test/mistake    → P:0.0891 R:0.1424 F1:0.1097
+2026-06-12 23:18:13,695 [INFO]   test/correction → P:0.0169 R:0.0357 F1:0.0229
+2026-06-12 23:18:13,695 [INFO] ================================================================
+2026-06-12 23:18:14,379 [INFO] Grafici test salvati in: figures/mamba_005
