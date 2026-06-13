@@ -1,0 +1,66 @@
+2026-06-12 01:32:52,113 [INFO] [MetricsCallback] Run ID: baseline_001 | Log: experiments/logs/baseline_001.log | Figures: figures/baseline_001
+2026-06-12 01:32:52,113 [INFO] Avvio addestramento TempAgg Baseline. Run: baseline_001
+2026-06-12 01:32:52,134 [INFO] Dispositivo: cuda
+2026-06-12 01:33:09,179 [INFO] Modello: TempAgg Baseline — Parametri trainabili: 9,057,795
+2026-06-12 01:33:10,556 [INFO] ================================================================
+2026-06-12 01:33:10,556 [INFO] MODELLO : BASELINE  |  RUN : baseline_001
+2026-06-12 01:33:10,557 [INFO] AVVIO   : 2026-06-12 01:33:10
+2026-06-12 01:33:10,557 [INFO] ================================================================
+2026-06-12 01:33:10,557 [INFO] PARAMETRI TRAINING:
+2026-06-12 01:33:10,557 [INFO]   accumulate_grad_batches            : 1
+2026-06-12 01:33:10,557 [INFO]   annots_dir                         : data/annotations/assembly101-mistake-detection/annots
+2026-06-12 01:33:10,557 [INFO]   batch_size                         : 2
+2026-06-12 01:33:10,558 [INFO]   ckpt_dir                           : experiments/checkpoints
+2026-06-12 01:33:10,558 [INFO]   class_weight_exp                   : 1.0
+2026-06-12 01:33:10,558 [INFO]   dropout                            : 0.2
+2026-06-12 01:33:10,558 [INFO]   epochs                             : 100
+2026-06-12 01:33:10,558 [INFO]   focal_gamma                        : 2.0
+2026-06-12 01:33:10,558 [INFO]   hidden_dim                         : 512
+2026-06-12 01:33:10,558 [INFO]   lr                                 : 0.0002
+2026-06-12 01:33:10,558 [INFO]   max_seq_len                        : 8000
+2026-06-12 01:33:10,559 [INFO]   no_wandb                           : False
+2026-06-12 01:33:10,559 [INFO]   num_workers                        : 4
+2026-06-12 01:33:10,559 [INFO]   processed_dir                      : data/processed
+2026-06-12 01:33:10,559 [INFO]   recent_scales                      : [30, 90, 150]
+2026-06-12 01:33:10,559 [INFO]   resume                             : False
+2026-06-12 01:33:10,559 [INFO]   seed                               : 42
+2026-06-12 01:33:10,559 [INFO]   spanning_scales                    : [8, 16, 24]
+2026-06-12 01:33:10,559 [INFO]   test_split                         : 0.15
+2026-06-12 01:33:10,560 [INFO]   val_split                          : 0.15
+2026-06-12 01:33:10,560 [INFO]   wandb_project                      : mistake-detection
+2026-06-12 01:33:10,560 [INFO]   wandb_run_name                     : tempagg-baseline-5300
+2026-06-12 01:33:10,560 [INFO]   weight_decay                       : 0.0001
+2026-06-12 01:33:10,560 [INFO] ================================================================
+2026-06-12 01:49:36,679 [INFO] Epoch   0 | train_loss: 0.5064 | val_loss: 0.4863 | mistake    → P:0.126 R:0.133 F1:0.129 | correction → P:0.059 R:0.088 F1:0.070 | lr: 8.00e-05
+2026-06-12 02:05:57,725 [INFO] Epoch   1 | train_loss: 0.4076 | val_loss: 0.5324 | mistake    → P:0.148 R:0.278 F1:0.193 | correction → P:0.088 R:0.115 F1:0.100 | lr: 1.40e-04
+2026-06-12 02:22:19,021 [INFO] Epoch   2 | train_loss: 0.3541 | val_loss: 0.5334 | mistake    → P:0.146 R:0.329 F1:0.203 | correction → P:0.121 R:0.132 F1:0.126 | lr: 2.00e-04
+2026-06-12 02:38:40,698 [INFO] Epoch   3 | train_loss: 0.3101 | val_loss: 0.7951 | mistake    → P:0.137 R:0.211 F1:0.166 | correction → P:0.013 R:0.025 F1:0.017 | lr: 2.00e-04
+2026-06-12 02:55:03,532 [INFO] Epoch   4 | train_loss: 0.2216 | val_loss: 0.6349 | mistake    → P:0.136 R:0.239 F1:0.174 | correction → P:0.117 R:0.154 F1:0.133 | lr: 2.00e-04
+2026-06-12 03:11:25,736 [INFO] Epoch   5 | train_loss: 0.1561 | val_loss: 0.7961 | mistake    → P:0.159 R:0.297 F1:0.207 | correction → P:0.091 R:0.095 F1:0.093 | lr: 2.00e-04
+2026-06-12 03:27:47,338 [INFO] Epoch   6 | train_loss: 0.1282 | val_loss: 1.1271 | mistake    → P:0.141 R:0.056 F1:0.081 | correction → P:0.157 R:0.115 F1:0.133 | lr: 1.99e-04
+2026-06-12 03:44:08,869 [INFO] Epoch   7 | train_loss: 0.0937 | val_loss: 1.2288 | mistake    → P:0.166 R:0.315 F1:0.217 | correction → P:0.080 R:0.048 F1:0.060 | lr: 1.99e-04
+2026-06-12 04:00:30,889 [INFO] Epoch   8 | train_loss: 0.0784 | val_loss: 1.0113 | mistake    → P:0.135 R:0.141 F1:0.138 | correction → P:0.069 R:0.157 F1:0.096 | lr: 1.98e-04
+2026-06-12 04:16:53,112 [INFO] Epoch   9 | train_loss: 0.0638 | val_loss: 1.1850 | mistake    → P:0.173 R:0.315 F1:0.224 | correction → P:0.034 R:0.015 F1:0.020 | lr: 1.97e-04
+2026-06-12 04:33:14,292 [INFO] Epoch  10 | train_loss: 0.0509 | val_loss: 1.2590 | mistake    → P:0.121 R:0.109 F1:0.115 | correction → P:0.089 R:0.182 F1:0.120 | lr: 1.97e-04
+2026-06-12 04:49:35,371 [INFO] Epoch  11 | train_loss: 0.0438 | val_loss: 1.3319 | mistake    → P:0.159 R:0.138 F1:0.148 | correction → P:0.134 R:0.061 F1:0.084 | lr: 1.96e-04
+2026-06-12 05:05:56,294 [INFO] Epoch  12 | train_loss: 0.0345 | val_loss: 1.6217 | mistake    → P:0.158 R:0.143 F1:0.150 | correction → P:0.078 R:0.085 F1:0.081 | lr: 1.95e-04
+2026-06-12 05:22:18,815 [INFO] Epoch  13 | train_loss: 0.0310 | val_loss: 1.5516 | mistake    → P:0.132 R:0.150 F1:0.140 | correction → P:0.017 R:0.011 F1:0.013 | lr: 1.94e-04
+2026-06-12 05:38:40,691 [INFO] Epoch  14 | train_loss: 0.0257 | val_loss: 1.5712 | mistake    → P:0.157 R:0.242 F1:0.190 | correction → P:0.019 R:0.006 F1:0.009 | lr: 1.93e-04
+2026-06-12 05:55:02,429 [INFO] Epoch  15 | train_loss: 0.0282 | val_loss: 1.6722 | mistake    → P:0.151 R:0.156 F1:0.154 | correction → P:0.010 R:0.007 F1:0.008 | lr: 1.91e-04
+2026-06-12 06:11:24,666 [INFO] Epoch  16 | train_loss: 0.0189 | val_loss: 1.5607 | mistake    → P:0.177 R:0.213 F1:0.193 | correction → P:0.111 R:0.050 F1:0.069 | lr: 1.90e-04
+2026-06-12 06:27:47,774 [INFO] Epoch  17 | train_loss: 0.0198 | val_loss: 1.4974 | mistake    → P:0.140 R:0.129 F1:0.134 | correction → P:0.060 R:0.039 F1:0.047 | lr: 1.89e-04
+2026-06-12 06:27:47,938 [INFO] ================================================================
+2026-06-12 06:27:47,939 [INFO] TRAINING COMPLETATO
+2026-06-12 06:27:47,941 [INFO] Best epoch    : 0
+2026-06-12 06:27:47,941 [INFO] Best val_loss : 0.4863
+2026-06-12 06:27:47,941 [INFO] ================================================================
+2026-06-12 06:27:48,508 [INFO] Grafici training salvati in: figures/baseline_001
+2026-06-12 06:27:48,513 [INFO] Best checkpoint: /home/brbmnl01r11c351h/assembly-mistake-detection/experiments/checkpoints/tempagg-epoch=02-val/f1_macro=0.4150.ckpt
+2026-06-12 06:29:12,277 [INFO] ================================================================
+2026-06-12 06:29:12,278 [INFO] RISULTATI TEST SET:
+2026-06-12 06:29:12,278 [INFO]   test/loss: 0.7087
+2026-06-12 06:29:13,488 [INFO]   test/correct    → P:0.9465 R:0.9209 F1:0.9335
+2026-06-12 06:29:13,488 [INFO]   test/mistake    → P:0.2145 R:0.3033 F1:0.2513
+2026-06-12 06:29:13,488 [INFO]   test/correction → P:0.0284 R:0.0298 F1:0.0291
+2026-06-12 06:29:13,488 [INFO] ================================================================
+2026-06-12 06:29:15,295 [INFO] Grafici test salvati in: figures/baseline_001
