@@ -35,26 +35,40 @@ Il benchmark sperimentale utilizzato è **Assembly101**, un dataset su larga sca
 
 ## 3. Descrizione delle Architetture ed Implementazione
 
-Il lavoro mette a confronto tre paradigmi architetturali differenti:
+Il lavoro mette a confronto tre paradigmi architetturali differenti, uniti da un framework di addestramento solido e condiviso per gestire le specifiche sfide del dataset.
 
-### 3.1 Baseline Coarse-to-Fine (C2F)
+### 3.1 Dettagli Architetturali dei Modelli
+
+#### A. Baseline Coarse-to-Fine (TempAGG)
 La baseline temporale riproduce il framework di temporal aggregation stabilito nel paper originale di Assembly101. Essa impiega blocchi di convoluzione temporale gerarchica a scale temporali distinte:
-* **Recent Scales:** Finestre temporali strette (es. $[30, 90, 150]$ frame) per catturare i dettagli immediati del movimento.
-* **Spanning Scales:** Finestre temporali più ampie (es. $[8, 16, 24]$ passaggi dilatati) per estrarre informazioni sul contesto circostante l'azione corrente.
+* **Recent Scales:** Finestre temporali strette (es. $[30, 90, 150]$ frame) per estrarre variazioni visive ad alta frequenza e dettagli immediati del movimento.
+* **Spanning Scales:** Finestre temporali dilatate (es. $[8, 16, 24]$ passaggi) per catturare un contesto semantico più esteso attorno all'azione corrente.
 
-### 3.2 Modello Mamba (State-Space Model)
-Mamba sostituisce i meccanismi di attenzione e ricorrenza tradizionali proiettando le feature video in uno spazio di stato continuo linearizzato. Grazie alla parametrizzazione tempo-variante delle matrici di transizione dello stato ($A, B, C$) e all'algoritmo di **Selective Scan** parallelizzabile su GPU, Mamba mantiene una complessità $O(N)$ garantendo al contempo un flusso informativo non lineare in grado di "selezionare" cosa ricordare e cosa dimenticare ad ogni passo temporale.
-Il flusso implementato nel nostro `MambaMistakeDetector` prevede:
+#### B. Modello Mamba (State-Space Model)
+Mamba sostituisce i meccanismi di attenzione globale (tipici dei Transformer) proiettando le feature video in uno spazio di stato continuo linearizzato. Grazie alla parametrizzazione tempo-variante delle matrici di transizione dello stato ($A, B, C$) e all'algoritmo di **Selective Scan** (ottimizzato tramite kernel C++ della libreria nativa `mamba_ssm`), Mamba mantiene una complessità $O(N)$ garantendo al contempo un flusso informativo non lineare in grado di "selezionare" quali pattern ricordare e quali ignorare.
+L'architettura del nostro `MambaMistakeDetector` si sviluppa in tre fasi:
+1. **Input Projection:** Trasforma le feature TSM in ingresso ($D_{in} = 2048$) nella dimensione interna ($d_{\text{model}}$), applicando LayerNorm, GELU e Dropout.
+2. **Backbone Mamba:** Una sequenza impilata di $N$ blocchi causali Mamba, ciascuno dotato di pre-LayerNorm e Residual Connection.
+3. **Classification Head:** Una rete MLP che riduce le feature a 3 classi finali.
 $$\text{Input } [B, T, 2048] \rightarrow \text{Linear Projection } [B, T, d_{\text{model}}] \rightarrow \text{Mamba Backbone } (N \text{ layer}) \rightarrow \text{Classification Head} \rightarrow \text{Logits } [B, T, 3]$$
 
-### 3.3 Variante xLSTM
-xLSTM estende le classiche LSTM introducendo due varianti principali (sLSTM con gating esponenziale e mLSTM con memoria a matrice). In questa ricerca è stata adottata un'architettura basata sul blocco **mLSTM** (matrix LSTM) puro, che sostituisce il vettore nascosto classico con una matrice di memoria. Questa modifica consente il calcolo parallelizzato (stile self-attention) durante la fase di training e una ritenzione dell'informazione nettamente superiore rispetto alle RNN convenzionali.
+#### C. Variante xLSTM
+Il framework xLSTM estende il concetto tradizionale di LSTM introducendo due varianti: sLSTM (con gating esponenziale) e mLSTM (con memoria a matrice). Nel nostro `xLSTMMistakeDetector` abbiamo adottato una struttura composta interamente da blocchi **mLSTM** puri. Sostituendo lo scalare/vettore nascosto classico con una vera e propria matrice di memoria, il modello raggiunge una capacità di stoccaggio dell'informazione nettamente superiore e permette un'elaborazione parallelizzata (stile self-attention) estremamente più efficiente rispetto alle classiche Reti Ricorrenti.
 
-### 3.4 Soluzioni Ingegneristiche e Ottimizzazione
-Per addestrare modelli di queste dimensioni su sequenze così lunghe senza incorrere in crash di memoria (Out Of Memory) sulla GPU, sono state implementate le seguenti soluzioni:
-* **PyTorch Lightning:** Per standardizzare i cicli di training e garantire la riproducibilità statistica degli esperimenti.
-* **Gradient Checkpointing per-block:** Invece di memorizzare tutti gli attivatori intermedi durante il forward pass di Mamba o xLSTM, gli attivatori vengono ricalcolati durante il backward pass blocco per blocco. Questa scelta riduce drasticamente il consumo di VRAM, permettendo l'addestramento su sequenze fino a 20.000+ frame.
-* **Class Weighting:** Utilizzo di pesi inversamente proporzionali alla frequenza delle classi nella Cross-Entropy Loss (regolati dall'esponente `class_weight_exp` nei log) per forzare il modello a penalizzare gli errori sulle classi minoritarie.
+### 3.2 Gestione delle Sequenze a Lungo Termine
+
+Processare interi video procedurali richiede accorgimenti specifici per la gestione della dimensione temporale $T$:
+* **Troncamento e Orizzonte Temporale (`max_seq_len`):** Sebbene le architetture SSM permettano in teoria lunghezze di sequenza illimitate (Whole Video), all'atto pratico le dinamiche di ottimizzazione risultano più stabili limitando la lunghezza della sequenza (es. a 8.000 o 12.000 frame).
+* **Padding e Masking:** I video di diversa durata all'interno dello stesso batch vengono allineati tramite un'apposita `attention_mask`. I logit in corrispondenza del padding vengono sistematicamente esclusi dal calcolo della loss (usando un `ignore_index = -1`), evitando di inquinare i gradienti.
+* **Gradient Checkpointing:** Per scongiurare crash per esaurimento della VRAM su GPU (Out Of Memory) durante il training di sequenze che superano i 15.000 frame, abbiamo integrato il gradient checkpointing "per-block". Questa tecnica ricalcola gli attivatori intermedi al volo durante la backpropagation, riducendo drasticamente il *memory footprint* architetturale a scapito di un lieve aumento del tempo di calcolo.
+
+### 3.3 Funzione di Costo: Focal Loss e Class Weighting
+
+Per contrastare il massiccio sbilanciamento delle classi (dove i frame `correct` superano il 77%, contro solo il 15% di `mistake` e <7% di `correction`), abbiamo integrato una **Focal Loss multi-classe**:
+$$\text{FL}(p_t) = -\alpha_t (1 - p_t)^\gamma \log(p_t)$$
+Questa funzione agisce su due livelli:
+1. **Fattore Focalizzante $\gamma$:** Il termine $(1 - p_t)^\gamma$ abbatte dinamicamente il peso degli esempi "facili". Se il modello classifica correttamente con elevata confidenza (es. i frame `correct` ripetitivi), il gradiente prodotto è trascurabile, costringendo la rete a focalizzarsi sugli errori difficili.
+2. **Pesi di Classe Dinamici ($\alpha_t$):** Tramite il parametro `class_weight_exp`, i pesi attribuiti a `mistake` e `correction` vengono amplificati in proporzione inversa alla loro frequenza, controbilanciando numericamente il predominio della classe corretta nel dataset.
 
 ---
 
@@ -62,19 +76,19 @@ Per addestrare modelli di queste dimensioni su sequenze così lunghe senza incor
 
 I risultati di tutti gli 11 addestramenti registrati nella cartella `experiments/logs` sono stati estratti e riassunti nella seguente tabella comparativa:
 
-| ID Esperimento | Modello | Configurazione Run (W&B) | Parametri Trainabili | Lunghezza Max Sequenza (`max_seq_len`) | Learning Rate | Weight Decay | Pesi Classi (`class_weight_exp`) | Dropout | Miglior Epoca | Miglior Val Loss | Test Loss | Test Correct F1 | Test Mistake F1 | Test Correction F1 |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **baseline_001** | BASELINE | `tempagg-baseline-5300` | 9.06M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 0.2 | Epoch 0 | 0.4863 | 0.7087 | 93.35% | **25.13%** | 2.91% |
-| **baseline_002** | BASELINE | `tempagg-baseline-5312` | 2.53M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 0.2 | Epoch 0 | 0.3611 | 0.6847 | 94.16% | **25.62%** | 1.61% |
-| **mamba_001** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | None (Whole Vid) | 5.0e-05 | 0.0100 | 1.5 | 0.4 | Epoch 2 | 0.5371 | 1.7684 | 95.62% | 13.99% | **4.38%** |
-| **mamba_002** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | 20000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 5 | 0.2842 | 0.6491 | 95.58% | 13.61% | 3.42% |
-| **mamba_003** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 12000 | 2.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 6 | 0.2959 | 0.4673 | 93.75% | 15.18% | 1.84% |
-| **mamba_004** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 8000 | 1.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 8 | **0.2261** | **0.2605** | 93.76% | 10.88% | 1.61% |
-| **mamba_005** | MAMBA | `mamba-ssm-wholevid-5324` | 21.53M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 4 | 0.3044 | 0.8288 | 95.10% | 10.97% | 2.29% |
-| **mamba_006** | MAMBA | `mamba-ssm-wholevid-5324` | **3.19M** | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 6 | 0.3002 | 0.5340 | 95.05% | 10.45% | 2.12% |
-| **mamba_007** | MAMBA | `mamba-ssm-wholevid-5324` | 42.64M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 5 | 0.3191 | 0.8731 | 95.49% | 11.84% | 3.40% |
-| **xlstm_001** | XLSTM | `xlstm-wholevid-5292` | 10.89M | 8000 | 2.0e-05 | 0.0100 | 1.0 | 0.2 | Epoch 2 | 0.3303 | 0.9828 | **95.84%** | 10.85% | 1.25% |
-| **xlstm_002** | XLSTM | `xlstm-wholevid-5299` | 4.54M | 8000 | 1.5e-05 | 0.0500 | **1.5** | 0.4 | Epoch 1 | 0.6906 | 0.9915 | 94.28% | 13.69% | 3.07% |
+| ID Esperimento | Modello | Configurazione Run (W&B) | Parametri Trainabili | Lunghezza Max Sequenza (`max_seq_len`) | Learning Rate | Weight Decay | Pesi Classi (`class_weight_exp`) | Dropout | Miglior Epoca | Miglior Val Loss | Test Loss | Test Correct F1 | Test Mistake F1 | Test Correction F1 | Test Macro F1 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **baseline_001** | BASELINE | `tempagg-baseline-5300` | 9.06M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 0.2 | Epoch 0 | 0.4863 | 0.7087 | 93.35% | **25.13%** | 2.91% | **40.46%** |
+| **baseline_002** | BASELINE | `tempagg-baseline-5312` | 2.53M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 0.2 | Epoch 0 | 0.3611 | 0.6847 | 94.16% | **25.62%** | 1.61% | **40.46%** |
+| **mamba_001** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | None (Whole Vid) | 5.0e-05 | 0.0100 | 1.5 | 0.4 | Epoch 2 | 0.5371 | 1.7684 | 95.62% | 13.99% | **4.38%** | 37.99% |
+| **mamba_002** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | 20000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 5 | 0.2842 | 0.6491 | 95.58% | 13.61% | 3.42% | 37.53% |
+| **mamba_003** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 12000 | 2.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 6 | 0.2959 | 0.4673 | 93.75% | 15.18% | 1.84% | 36.92% |
+| **mamba_004** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 8000 | 1.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 8 | **0.2261** | **0.2605** | 93.76% | 10.88% | 1.61% | 35.41% |
+| **mamba_005** | MAMBA | `mamba-ssm-wholevid-5324` | 21.53M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 4 | 0.3044 | 0.8288 | 95.10% | 10.97% | 2.29% | 36.12% |
+| **mamba_006** | MAMBA | `mamba-ssm-wholevid-5324` | **3.19M** | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 6 | 0.3002 | 0.5340 | 95.05% | 10.45% | 2.12% | 35.87% |
+| **mamba_007** | MAMBA | `mamba-ssm-wholevid-5324` | 42.64M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 5 | 0.3191 | 0.8731 | 95.49% | 11.84% | 3.40% | 36.91% |
+| **xlstm_001** | XLSTM | `xlstm-wholevid-5292` | 10.89M | 8000 | 2.0e-05 | 0.0100 | 1.0 | 0.2 | Epoch 2 | 0.3303 | 0.9828 | **95.84%** | 10.85% | 1.25% | 35.98% |
+| **xlstm_002** | XLSTM | `xlstm-wholevid-5299` | 4.54M | 8000 | 1.5e-05 | 0.0500 | **1.5** | 0.4 | Epoch 1 | 0.6906 | 0.9915 | 94.28% | 13.69% | 3.07% | 37.01% |
 
 ---
 
