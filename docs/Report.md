@@ -1,6 +1,8 @@
 # State-Space Models (Mamba) per la Rilevazione di Errori (Mistake Detection)
 **Progetto per il corso di *Deep Learning: Advanced Models and Methods (DL26)***  
-**Università degli Studi di Catania — Dipartimento di Matematica e Informatica**  
+**Università degli Studi di Catania — Dipartimento di Matematica e Informatica**
+
+**Gruppo LeMeCla: Messina Damiano, Barbagallo Emanuele, Nuncibello Claudio** 
 
 ---
 
@@ -22,7 +24,7 @@ Il benchmark sperimentale adottato per questo progetto è **Assembly101**, un da
 
 ### 2.1 Caratteristiche dei Dati
 * **Input Feature:** L'elaborazione non avviene direttamente sui tensori RGB grezzi, al fine di ridurre il carico computazionale. Il sistema ingerisce vettori di feature pre-estratte tramite architetture *Temporal Shift Module* (TSM) a 2048 dimensioni spaziali. Queste feature catturano una rappresentazione densa e compatta delle informazioni spazio-temporali locali per ciascun frame della sequenza.
-* **Setup Video:** Il progetto fa affidamento su una vista singola (*single view*), accompagnata da annotazioni dense di *ground truth* frame-by-frame fornite dagli annotatori.
+* **Setup Video:** Il progetto fa affidamento su una vista singola (*single view*), accompagnata da annotazioni dense di *ground truth* frame-by-frame fornite dagli annotatori tramite csv di annotazione, le quali sono state trasferite sui singoli frame.
 * **Classi del Task (Classificazione a 3 vie):** Il problema è formulato come un task di classificazione densa a livello di frame, partizionato in tre classi mutuamente esclusive:
   1. `correct` (0): Frame in cui l'operatore sta eseguendo la procedura correttamente.
   2. `mistake` (1): Frame corrispondenti all'esatto intervallo temporale in cui si verifica e si concretizza un errore procedurale (es. inserimento di un componente errato o in una posizione scorretta).
@@ -30,19 +32,19 @@ Il benchmark sperimentale adottato per questo progetto è **Assembly101**, un da
 
 ### 2.2 Sfide Intrinseche
 L'approccio scelto espone a due ostacoli di natura statistica e computazionale:
-* **Sbilanciamento Estremo delle Classi:** Negli scenari reali e in Assembly101, la stragrande maggioranza del tempo di riproduzione appartiene alla classe `correct` (oltre il 90%). Gli eventi di errore (`mistake`) e le conseguenti correzioni (`correction`) sono anomalie rare e fortemente sparse nel dominio temporale. L'utilizzo di metriche classiche come l'accuratezza globale risulta perciò fuorviante (una rete che predice costantemente `correct` otterrebbe un'accuratezza altissima). Per garantire validità scientifica, le metriche di valutazione elette a riferimento sono **Precision (P)**, **Recall (R)** e l'**F1-Score** calcolate specificamente per ciascuna classe minoritaria, a cui si affianca il **Mean Average Precision (mAP)**.
-* **Orizzonte Temporale Fortemente Variabile:** La lunghezza delle sequenze è profondamente disomogenea. Si passa da clip contenenti alcune centinaia di frame a procedure estese che oltrepassano i 20.000 frame, introducendo vincoli severi per il raggruppamento in tensori (*batching*).
+* **Sbilanciamento Estremo delle Classi:** Negli scenari reali e in Assembly101, la stragrande maggioranza del tempo di riproduzione appartiene alla classe `correct` (oltre il 77%). Gli eventi di errore (`mistake`) e le conseguenti correzioni (`correction`) sono anomalie rare e fortemente sparse nel dominio temporale. L'utilizzo di metriche classiche come l'accuratezza globale risulta perciò fuorviante (una rete che predice costantemente `correct` otterrebbe un'accuratezza altissima). Per garantire validità scientifica, le metriche di valutazione elette a riferimento sono **Precision (P)**, **Recall (R)** e l'**F1-Score**, calcolate specificamente per ciascuna classe, nonchè **MacroF1-Score**.
+* **Orizzonte Temporale Fortemente Variabile:** La lunghezza delle sequenze è profondamente disomogenea. Si passa da clip contenenti alcune migliaia di frame a procedure estese che oltrepassano i 50.000 frame, introducendo vincoli severi per il raggruppamento in tensori (*batching*). Nello specifico ***la media*** di frame per video è pari a 12.739 frame.
 
 ---
 
 ## 3. Ottimizzazione del Data Pipeline e Sampling
 
-Al fine di addestrare architetture ad altissima capacità su sequenze che sforano i 20.000 frame senza esaurire la memoria della GPU, l'infrastruttura di dataloading è stata oggetto di un profondo lavoro di ottimizzazione ingegneristica.
+Al fine di addestrare architetture ad altissima capacità su sequenze contenenti decine di migliaia di frame senza esaurire la memoria della GPU, l'infrastruttura di dataloading è stata oggetto di un profondo lavoro di ottimizzazione ingegneristica.
 
 ### 3.1 Prevenzione del Data Leakage (Sequence-Level Split)
 A differenza dei task di classificazione statici, i campioni nel dominio video sono sequenze continue. La partizione dei set di *Train*, *Validation* e *Test* è stata implementata a livello di *intera sequenza* piuttosto che a livello di sample (*frame/snippet*). Splittare il dataset a livello di singolo snippet comporterebbe un grave *data leakage*, in quanto porzioni temporali adiacenti dello stesso video finirebbero in partizioni diverse, falsando radicalmente le metriche di validazione. Il codice nel `dataloader.py` garantisce l'isolamento causale e semantico distribuendo interi video o solo nel train, o solo nel test.
 
-### 3.2 Dualità del Dataset: MistakeDetection vs WholeVideo
+### 3.2 Dualità del Dataloader: MistakeDetection vs WholeVideo
 Sono state implementate due classi differenziate per l'estrazione dei dati, in funzione del paradigma architetturale testato:
 * **MistakeDetectionDataset (Per le baseline basate su storie causali):** Questa classe estrae i dati in conformità a un paradigma "online" rigoroso. Ogni campione rappresenta una storia causale definita dall'intervallo $[0 \dots \text{end\_frame}]$. Durante l'inferenza, il modello non ha alcun accesso alle feature future, simulando fedelmente le condizioni di deployment real-time.
 * **WholeVideoDataset (Per le architetture globali come Mamba e xLSTM):** I modelli Sequence-to-Sequence (Seq2Seq) ad elevata capacità vengono addestrati ingerendo la quasi totalità del video in un singolo passaggio. In presenza di video la cui lunghezza eccede un limite soglia prestabilito (`max_seq_len`, es. 20.000 frame), viene applicata una logica di troncamento direzionale **tail-oriented**. Piuttosto che troncare la fine del video, si scarta la parte iniziale più antica. Questa scelta euristica deriva dall'osservazione statistica che le procedure tendono a deragliare (generando anomalie, errori e correzioni) con maggior frequenza nelle fasi avanzate dell'assemblaggio, quando la stanchezza cognitiva dell'operatore aumenta e la complessità strutturale del manufatto cresce. Conservare gli ultimi frame massimizza la densità informativa delle classi minoritarie nel tensore di input.
