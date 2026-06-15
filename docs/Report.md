@@ -91,19 +91,19 @@ Per addestrare modelli che processano tensori di dimensioni nell'ordine dei giga
 
 I risultati di tutti gli addestramenti, le esplorazioni iperparametriche e i *run* registrati nella directory `experiments/logs` sono stati aggregati, estratti e sintetizzati nella seguente tabella riepilogativa, focalizzando l'analisi sull'F1-Score (la metrica più sensibile alla performance sulle anomalie).
 
-| ID Esperimento | Modello | Configurazione Run | Parametri Trainabili | Lunghezza Max Sequenza (`max_seq_len`) | Learning Rate | Weight Decay | Pesi Classi (`class_weight_exp`) | Dropout | Miglior Epoca | Miglior Val Loss | Test Loss | Test Correct F1 | Test Mistake F1 | Test Correction F1 | Test Macro F1 |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **baseline_001** | BASELINE | `tempagg-baseline-5300` | 9.06M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 0.2 | Epoch 0 | 0.4863 | 0.7087 | 93.35% | **25.13%** | 2.91% | **40.46%** |
-| **baseline_002** | BASELINE | `tempagg-baseline-5312` | 2.53M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 0.2 | Epoch 0 | 0.3611 | 0.6847 | 94.16% | **25.62%** | 1.61% | **40.46%** |
-| **mamba_001** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | None (Whole Vid) | 5.0e-05 | 0.0100 | 1.5 | 0.4 | Epoch 2 | 0.5371 | 1.7684 | 95.62% | 13.99% | **4.38%** | 37.99% |
-| **mamba_002** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | 20000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 5 | 0.2842 | 0.6491 | 95.58% | 13.61% | 3.42% | 37.53% |
-| **mamba_003** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 12000 | 2.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 6 | 0.2959 | 0.4673 | 93.75% | 15.18% | 1.84% | 36.92% |
-| **mamba_004** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 8000 | 1.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 8 | **0.2261** | **0.2605** | 93.76% | 10.88% | 1.61% | 35.41% |
-| **mamba_005** | MAMBA | `mamba-ssm-wholevid-5324` | 21.53M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 4 | 0.3044 | 0.8288 | 95.10% | 10.97% | 2.29% | 36.12% |
-| **mamba_006** | MAMBA | `mamba-ssm-wholevid-5324` | **3.19M** | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 6 | 0.3002 | 0.5340 | 95.05% | 10.45% | 2.12% | 35.87% |
-| **mamba_007** | MAMBA | `mamba-ssm-wholevid-5324` | 42.64M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 0.2 | Epoch 5 | 0.3191 | 0.8731 | 95.49% | 11.84% | 3.40% | 36.91% |
-| **xlstm_001** | XLSTM | `xlstm-wholevid-5292` | 10.89M | 8000 | 2.0e-05 | 0.0100 | 1.0 | 0.2 | Epoch 2 | 0.3303 | 0.9828 | **95.84%** | 10.85% | 1.25% | 35.98% |
-| **xlstm_002** | XLSTM | `xlstm-wholevid-5299` | 4.54M | 8000 | 1.5e-05 | 0.0500 | **1.5** | 0.4 | Epoch 1 | 0.6906 | 0.9915 | 94.28% | 13.69% | 3.07% | 37.01% |
+| ID Esperimento | Modello | Configurazione Run | Parametri Trainabili | Lunghezza Max Sequenza (`max_seq_len`) | Learning Rate | Weight Decay | Pesi Classi (`class_weight_exp`) | Focal Gamma | Dropout | Miglior Epoca | Miglior Val Loss | Test Loss | Test Correct F1 | Test Mistake F1 | Test Correction F1 | Test Macro F1 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **baseline_001** | BASELINE | `tempagg-baseline-5300` | 9.06M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 2.0 | 0.2 | Epoch 0 | 0.4863 | 0.7087 | 93.35% | **25.13%** | 2.91% | **40.46%** |
+| **baseline_002** | BASELINE | `tempagg-baseline-5312` | 2.53M | 8000 | 2.0e-04 | 0.0001 | 1.0 | 2.0 | 0.2 | Epoch 0 | 0.3611 | 0.6847 | 94.16% | **25.62%** | 1.61% | **40.46%** |
+| **mamba_001** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | None (Whole Vid) | 5.0e-05 | 0.0100 | 1.5 | 2.0 | 0.4 | Epoch 2 | 0.5371 | 1.7684 | 95.62% | 13.99% | **4.38%** | 37.99% |
+| **mamba_002** | MAMBA | `mamba-ssm-wholevid-5318` | 11.36M | 20000 | 5.0e-05 | 0.0010 | 1.0 | 2.0 | 0.2 | Epoch 5 | 0.2842 | 0.6491 | 95.58% | 13.61% | 3.42% | 37.53% |
+| **mamba_003** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 12000 | 2.0e-05 | 0.0010 | 1.0 | 2.0 | 0.2 | Epoch 6 | 0.2959 | 0.4673 | 93.75% | 15.18% | 1.84% | 36.92% |
+| **mamba_004** | MAMBA | `mamba-ssm-wholevid-5324` | 11.36M | 8000 | 1.0e-05 | 0.0010 | 1.0 | 3.0 | 0.2 | Epoch 8 | **0.2261** | **0.2605** | 93.76% | 10.88% | 1.61% | 35.41% |
+| **mamba_005** | MAMBA | `mamba-ssm-wholevid-5324` | 21.53M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 2.0 | 0.2 | Epoch 4 | 0.3044 | 0.8288 | 95.10% | 10.97% | 2.29% | 36.12% |
+| **mamba_006** | MAMBA | `mamba-ssm-wholevid-5324` | **3.19M** | 12000 | 5.0e-05 | 0.0010 | 1.0 | 2.0 | 0.2 | Epoch 6 | 0.3002 | 0.5340 | 95.05% | 10.45% | 2.12% | 35.87% |
+| **mamba_007** | MAMBA | `mamba-ssm-wholevid-5324` | 42.64M | 12000 | 5.0e-05 | 0.0010 | 1.0 | 2.0 | 0.2 | Epoch 5 | 0.3191 | 0.8731 | 95.49% | 11.84% | 3.40% | 36.91% |
+| **xlstm_001** | XLSTM | `xlstm-wholevid-5292` | 10.89M | 8000 | 2.0e-05 | 0.0100 | 1.0 | 2.0 | 0.2 | Epoch 2 | 0.3303 | 0.9828 | **95.84%** | 10.85% | 1.25% | 35.98% |
+| **xlstm_002** | XLSTM | `xlstm-wholevid-5299` | 4.54M | 8000 | 1.5e-05 | 0.0500 | **1.5** | 2.0 | 0.4 | Epoch 1 | 0.6906 | 0.9915 | 94.28% | 13.69% | 3.07% | 37.01% |
 
 ---
 
