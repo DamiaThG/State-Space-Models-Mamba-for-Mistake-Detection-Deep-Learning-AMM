@@ -23,4 +23,4 @@ __pycache__/
 mamba_env.tar
 mamba_env.sif
 
-.agents/*.md
+.agents/
